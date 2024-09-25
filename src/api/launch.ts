@@ -2,7 +2,7 @@ import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, Transa
 import { verify, decode } from "@tsndr/cloudflare-worker-jwt"
 import { RequestLike, error, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode } from "zod"
-import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
+import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME, getFeeStats } from "../common"
 import { CreditsDurableObject } from "../credits"
 import { getMockData, vars, arraysEqualUnordered } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
@@ -37,7 +37,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 (val) => val ? JSON.parse(val as string) : undefined,
                 array(string()).optional()
             ),
-            fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)),
+            fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)).optional(),
         }).superRefine((input, ctx) => {
             if (!input.xdr && !input.func && !input.auth)
                 ctx.addIssue({
@@ -56,7 +56,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 })
         })
 
-        const {
+        let {
             xdr: x,
             func: f,
             auth: a,
@@ -66,6 +66,19 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 ? await getMockData(env, mock) // Only ever mock in development
                 : Object.fromEntries(formData)
         )
+
+        if (!fee) {
+            try {
+                const res = await getFeeStats(env)
+                fee = parseInt(res?.sorobanInclusionFee.p50 || BASE_FEE)
+            } catch {
+                fee = parseInt(BASE_FEE)
+            }
+
+            // Adding 1 to the fee to ensure when we divide / 2 later in launchtube we don't go below the minimum fee
+            // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+            fee = (fee + 1) * 2
+        }
 
         if (debug)
             return json({ xdr: x, func: f, auth: a, fee })
@@ -172,6 +185,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         const sorobanData = xdr.SorobanTransactionData.fromXDR(sim.transactionData, 'base64')
         const resourceFee = sorobanData.resourceFee().toBigInt()
+
         /* NOTE 
             Divided by 2 as a workaround to my workaround solution where TransactionBuilder.buildFeeBumpTransaction tries to be smart about the op base fee
             Note the fee is also part of the divide by 2 which means this will be the max in addition to the resource fee you'll pay for both the inner fee and the fee-bump combined
@@ -223,7 +237,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
     return json(res, {
         headers: {
-            'X-Credits-Remaining': credits,
+            'X-Credits-Remaining': credits.toString(),
         }
     })
 }

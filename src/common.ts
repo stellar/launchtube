@@ -40,6 +40,21 @@ export async function getAccount(env: Env, publicKey: string) {
         })
 }
 
+export async function getFeeStats(env: Env) {
+    const { rpc } = vars(env)
+
+    return rpc.post('', {
+        jsonrpc: '2.0',
+        id: 8891,
+        method: 'getFeeStats',
+    }).then((res: any) => {
+        if (res.result.error)
+            throw res.result
+
+        return res.result
+    })
+}
+
 export async function simulateTransaction(env: Env, xdr: string) {
     const { rpc } = vars(env)
 
