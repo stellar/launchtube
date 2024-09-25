@@ -12,18 +12,18 @@
     "types": "wrangler types"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240806.0",
-    "esbuild": "^0.23.0",
+    "@cloudflare/workers-types": "^4.20240924.0",
+    "esbuild": "^0.24.0",
     "esbuild-plugin-polyfill-node": "^0.3.0",
     "loadtest": "^8.0.9",
-    "typescript": "^5.5.4",
-    "wrangler": "^3.70.0"
+    "typescript": "^5.6.2",
+    "wrangler": "^3.78.8"
   },
   "dependencies": {
     "@stellar/stellar-base": "git+https://github.com/stellar/js-stellar-base.git#inner-fee-fix",
     "@tsndr/cloudflare-worker-jwt": "^2.5.3",
     "itty-fetcher": "^0.9.4",
-    "itty-router": "^5.0.17",
+    "itty-router": "^5.0.18",
     "zod": "^3.23.8"
   }
 }
