@@ -27,36 +27,36 @@ export class CreditsDurableObject extends DurableObject<Env> {
 		return this.ctx.storage.deleteAll();
 	}
 
-	async spendBefore(credits: number, eagerCredits: number = 0) {
+	async spendBefore(spend: number, refund: number = 0) {
 		if (
 			this.env.ENV !== 'development'
 			&& !(await this.ctx.storage.get('activated'))
 		) throw 'Not activated'
 
-		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + eagerCredits
+		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + refund
 
 		if (existing_credits <= 0)
 			throw 'No credits left'
 
-		const now_credits = existing_credits - credits
+		const now_credits = existing_credits - spend
 
 		await this.ctx.storage.put('credits', now_credits);
 
 		return now_credits
 	}
-	async spendAfter(credits: number, tx: string, bidCredits: number = 0) {
+	async spendAfter(tx: string, spend: number, refund: number = 0) {
 		if (
 			this.env.ENV !== 'development'
 			&& !(await this.ctx.storage.get('activated'))
 		) throw 'Not activated'
 
-		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + bidCredits
+		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + refund
 
 		if (existing_credits <= 0)
 			throw 'No credits left'
 
 		// Since this method is called after a successful tx send I'm fine not throwing if (now_credits < 0)
-		const now_credits = existing_credits - credits
+		const now_credits = existing_credits - spend
 
 		await this.ctx.storage.put('credits', now_credits);
 

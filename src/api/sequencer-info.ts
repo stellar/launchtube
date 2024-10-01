@@ -4,7 +4,6 @@ import { SequencerDurableObject } from "../sequencer";
 import { Keypair } from "@stellar/stellar-base";
 
 export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    // TODO DRY out Authorization checks
     const token = request.headers.get('Authorization').split(' ')[1]
 
     if (!await env.SUDOS.get(token))
@@ -33,10 +32,13 @@ export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: Exe
             await sequencerStub.returnSequence(secret)
             data = await sequencerStub.getData()
         }
-    } else if (dlte) {
+    } 
+    
+    else if (dlte) {
         await sequencerStub.deleteSequence(dlte)
         data = await sequencerStub.getData()
     } 
+    
     // Utility for special cases to retrieve sequence secrets
     // else if (shh) {
     //     const secrets: string[][] = []
@@ -65,8 +67,9 @@ export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: Exe
 
     // Private endpoint, but still, don't leak secrets
     data = {
+        ready: data.ready,
+        queue: data.queue.map((key: string) => Keypair.fromSecret(key).publicKey()),
         index: data.index,
-        no: data.no.map((key: string) => Keypair.fromSecret(key).publicKey()),
         poolCount: data.pool.length,
         fieldCount: data.field.length,
         pool: data.pool.map(([key]: [string]) => Keypair.fromSecret(key.split(':')[1]).publicKey()),

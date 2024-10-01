@@ -54,11 +54,12 @@ export function getRandomNumber(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export async function getMockData(env: Env, type: 'xdr' | 'op' | undefined = undefined) {
+export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
     const { networkPassphrase } = vars(env)
 
-    // TODO we should ensure this address is funded before trying to use it. Should also be an env var only on dev
-    const testKeypair = Keypair.fromSecret(env.TEST_SK)
+    // NOTE Ensure this address is funded before trying to use it. 
+    // Should also be an env var on dev ONLY
+    const testKeypair = Keypair.fromSecret(env.MOCK_SK)
     const testPubkey = testKeypair.publicKey()
 
     const mockPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
@@ -93,7 +94,7 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | undefined = und
         op.auth!.push(authSigned)
     }
 
-    const fee = getRandomNumber(10_000, 100_000).toString()
+    const fee = formData.get('fee') || undefined
 
     return type === 'op'
         ? {

@@ -1,5 +1,5 @@
 import { verify, decode } from "@tsndr/cloudflare-worker-jwt"
-import { RequestLike, error, html, status } from "itty-router"
+import { RequestLike, error, html } from "itty-router"
 import { CreditsDurableObject } from "../credits"
 
 export async function apiTokenActivate(request: RequestLike, env: Env, _ctx: ExecutionContext) {

@@ -25,11 +25,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
     let sequenceSecret: string | undefined
 
     try {
-        const formData = await request.formData()
-        const mock = formData.get('mock')
-        const isMock = ['true', 'xdr', 'op'].includes(mock)
-        const debug = formData.get('debug') === 'true'
-
+        const formData = await request.formData() as FormData
         const schema = object({
             xdr: string().optional(),
             func: string().optional(),
@@ -56,6 +52,9 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 })
         })
 
+        const mock = (formData.get('mock') || "") as "xdr" | "op" | ""
+        const isMock = ['xdr', 'op'].includes(mock)
+
         let {
             xdr: x,
             func: f,
@@ -63,10 +62,10 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             fee,
         } = schema.parse(
             isMock && env.ENV === 'development'
-                ? await getMockData(env, mock) // Only ever mock in development
+                ? await getMockData(env, mock, formData) // Only ever mock in development
                 : Object.fromEntries(formData)
         )
-
+        
         if (!fee) {
             try {
                 const res = await getFeeStats(env)
@@ -79,6 +78,8 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
             fee = (fee + 1) * 2
         }
+
+        const debug = formData.get('debug') === 'true'
 
         if (debug)
             return json({ xdr: x, func: f, auth: a, fee })
@@ -223,10 +224,12 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         const feeCredits = xdr.TransactionResult.fromXDR(res.resultXdr, 'base64').feeCharged().toBigInt()
 
+        console.log(feeCredits);
+
         // Refund the bid credits and spend the actual fee credits
         credits = await creditsStub.spendAfter(
-            Number(feeCredits),
             feeBumpTransaction.hash().toString('hex'),
+            Number(feeCredits),
             bidCredits
         )
     } finally {

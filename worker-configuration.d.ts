@@ -5,7 +5,7 @@ interface Env {
 	SUDOS: KVNamespace;
 	RPC_URL: string;
 	NETWORK_PASSPHRASE: string;
-	TEST_SK: string;
+	MOCK_SK: string;
 	NATIVE_CONTRACT_ID: string;
 	FUND_SK: string;
 	JWT_SECRET: string;

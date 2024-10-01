@@ -43,7 +43,7 @@ NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 ### PROD ###
 
 [env.prod]
-workers_dev = true
+workers_dev = false
 
 [[env.prod.durable_objects.bindings]]
 name = "CREDITS_DURABLE_OBJECT"

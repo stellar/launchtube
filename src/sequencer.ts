@@ -1,53 +1,54 @@
 import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-base";
 import { DurableObject } from "cloudflare:workers";
 import { getAccount, sendTransaction } from "./common";
-import { vars, addUniqItemsToArray, getRandomNumber, removeValueFromArrayIfExists, wait } from "./helpers";
+import { vars, addUniqItemsToArray, wait } from "./helpers";
 
 export class SequencerDurableObject extends DurableObject<Env> {
     private ready: boolean = true
     private queue: string[] = []
-    private no: string[] = []
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
     }
 
     public async getData() {
+        const index = await this.ctx.storage.get<number>('index') || 0
         const pool = await this.ctx.storage.list({ prefix: 'pool:' })
         const field = await this.ctx.storage.list({ prefix: 'field:' })
-        const index = await this.ctx.storage.get<number>('index') || 0
 
         return {
+            ready: this.ready,
+            queue: this.queue,
             index,
-            no: this.no,
             poolCount: pool.size,
             fieldCount: field.size,
             pool: [...pool.entries()],
             field: [...field.entries()]
         }
     }
+    public async queueSequences(count: number) {
+        let i = 0
+
+        while (i < count) {
+            await this.queueSequence()
+            i++
+        }
+
+        return this.pollSequence()
+    }
     public async getSequence(): Promise<string> {
         const items = await this.ctx.storage.list<boolean>({ prefix: 'pool:', limit: 1 })
 
-        if (items.size) {
-            const [[key]] = items.entries()
-            const sequenceSecret = key.split(':')[1]
+        if (items.size <= 0)
+            throw 'Too many transactions queued. Please try again later'
 
-            this.ctx.storage.delete(`pool:${sequenceSecret}`)
-            this.ctx.storage.put(`field:${sequenceSecret}`, true)
+        const [[key]] = items.entries()
+        const sequenceSecret = key.split(':')[1]
 
-            return sequenceSecret
-        } else {
-            const sequenceSecret = await this.queueSequence()
-            const poolSecret = await this.pollSequence(sequenceSecret)
+        this.ctx.storage.delete(`pool:${sequenceSecret}`)
+        this.ctx.storage.put(`field:${sequenceSecret}`, true)
 
-            if (poolSecret)
-                this.ctx.storage.delete(`pool:${poolSecret}`)
-
-            this.ctx.storage.put(`field:${poolSecret || sequenceSecret}`, true)
-
-            return poolSecret || sequenceSecret
-        }
+        return sequenceSecret
     }
     public async deleteSequence(sequence: string) {
         this.ctx.storage.delete(`field:${sequence}`)
@@ -67,13 +68,6 @@ export class SequencerDurableObject extends DurableObject<Env> {
     // Repeat taking the next batch of queued sequences 
 
     private async queueSequence() {
-        /* TODO
-            - Don't love this. 
-                Ideally we switch to a queue system that can handle this in a more elegant manner
-                On the plus side needing to spin up new sequence accounts shouldn't be terribly common
-            - This might have broken something as it seems it's also leaving orphaned no's
-                It's possible this was due to trying to create already created accounts though
-        */
         if (this.queue.length >= 25)
             throw 'Too many sequences queued. Please try again later'
 
@@ -94,47 +88,20 @@ export class SequencerDurableObject extends DurableObject<Env> {
         this.queue = addUniqItemsToArray(this.queue, sequenceSecret)
 
         await this.ctx.storage.put('index', index + 1)
-
-        return sequenceKeypair.secret()
     }
-    private async pollSequence(sequenceSecret: string, interval = 0): Promise<string | null> {
-        const poolSecret = await this.lookupPoolSequence(sequenceSecret)
-
-        if (removeValueFromArrayIfExists(this.no, sequenceSecret)) {
-            // We failed, but before we despair, let's see if there are any pool sequences available
-            if (poolSecret)
-                return poolSecret
-            else
-                throw 'Sequencer transaction failed. Please try again'
+    private async pollSequence(interval = 0): Promise<void> {
+        if (this.ready) {
+            if (interval >= 30)
+                throw 'Sequencer transaction timed out. Please try again'
+            else if (this.queue.length >= 1)
+                this.createSequences(this.queue.splice(0, 25))
+            else 
+                return
         }
-
-        if (poolSecret)
-            return poolSecret
-
-        if (interval >= 30 && this.ready) // ensure transaction isn't in flight before timing out
-            throw 'Sequencer transaction timed out. Please try again'
-
-        if (this.ready)
-            this.createSequences(this.queue.splice(0, 25)) // No need to block the request waiting for this
 
         interval++
         await wait()
-        return this.pollSequence(sequenceSecret, interval)
-    }
-    private async lookupPoolSequence(sequenceSecret: string) {
-        // Lookup our own key first
-        if (await this.ctx.storage.get<boolean>(`pool:${sequenceSecret}`))
-            return sequenceSecret
-
-        const items = await this.ctx.storage.list<boolean>({ prefix: 'pool:', limit: 1 })
-
-        // It's possible during the retry loop a pool sequence comes available at which point we should pull out our pending sequence and use the pool sequence
-        if (items.size) {
-            removeValueFromArrayIfExists(this.queue, sequenceSecret)
-
-            const [[key]] = items.entries()
-            return key.split(':')[1]
-        }
+        return this.pollSequence(interval)
     }
     private async createSequences(queue: string[]) {
         try {
@@ -147,7 +114,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
             const fundSource = await getAccount(this.env, fundPubkey)
 
             let transaction: TransactionBuilder | Transaction = new TransactionBuilder(fundSource, {
-                fee: getRandomNumber(10_000, 100_000).toString(), // TODO should this be more dynamic from a fee endpoint?
+                fee: (100_000).toString(),
                 networkPassphrase,
             })
 
@@ -172,10 +139,8 @@ export class SequencerDurableObject extends DurableObject<Env> {
                 this.ctx.storage.put(`pool:${sequenceSecret}`, true)
             }
         } catch (err: any) {
-            this.no = addUniqItemsToArray(this.no, ...queue.map((sequence) => Keypair.fromSecret(sequence).secret()))
             console.error(err);
             await wait(5000);
-            // No need to throw here as we'll catch tx errors elsewhere in the lookupSequence
         } finally {
             this.ready = true
         }

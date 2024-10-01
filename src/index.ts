@@ -9,6 +9,7 @@ import { apiTokensGenerate } from "./api/tokens-generate";
 import { apiSql } from "./api/sql";
 import { apiTokenActivate } from "./api/token-activate";
 import { verify } from "@tsndr/cloudflare-worker-jwt";
+import { apiSequencerQueue } from "./api/sequencer-queue";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -86,6 +87,7 @@ router
 	// Private endpoints
 	.get('/gen', apiTokensGenerate)
 	.delete('/:sub', apiTokenDelete)
+	.post('/seq', apiSequencerQueue)
 	.get('/seq', apiSequencerInfo)
 	.post('/sql', apiSql)
 	// ---
