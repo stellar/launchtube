@@ -40,7 +40,7 @@ Submit a transaction
 
 #### Body
 
-- `fee`
+- `fee` (optional)
     
     Number of credits (stroops) you want to use per operation to submit the transaction
 
