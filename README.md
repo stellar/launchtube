@@ -42,7 +42,7 @@ Submit a transaction
 
 - `fee` (optional)
     
-    Number of credits (stroops) you want to use per operation to submit the transaction
+    Number of credits (stroops) you want to spend on the [inclusion fee](https://developers.stellar.org/docs/learn/fundamentals/fees-resource-limits-metering#resource-fee) to submit the transaction
 
 AND
 
