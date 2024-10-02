@@ -1,3 +1,3 @@
 interface Env {
-	RPC_KEY: string;
+	RPC_URLS: string // (string | [string, string])[];
 }

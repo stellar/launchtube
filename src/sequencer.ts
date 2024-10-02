@@ -1,7 +1,7 @@
 import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-base";
 import { DurableObject } from "cloudflare:workers";
 import { getAccount, sendTransaction } from "./common";
-import { vars, addUniqItemsToArray, wait } from "./helpers";
+import { addUniqItemsToArray, wait } from "./helpers";
 
 export class SequencerDurableObject extends DurableObject<Env> {
     private ready: boolean = true
@@ -107,15 +107,13 @@ export class SequencerDurableObject extends DurableObject<Env> {
         try {
             this.ready = false
 
-            const { networkPassphrase } = vars(this.env)
-
             const fundKeypair = Keypair.fromSecret(this.env.FUND_SK)
             const fundPubkey = fundKeypair.publicKey()
             const fundSource = await getAccount(this.env, fundPubkey)
 
             let transaction: TransactionBuilder | Transaction = new TransactionBuilder(fundSource, {
                 fee: (100_000).toString(),
-                networkPassphrase,
+                networkPassphrase: this.env.NETWORK_PASSPHRASE,
             })
 
             for (const sequence of queue) {

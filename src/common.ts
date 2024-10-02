@@ -1,5 +1,5 @@
 import { xdr, Keypair, Account } from "@stellar/stellar-base";
-import { vars, wait } from "./helpers";
+import { getRpc, wait } from "./helpers";
 
 /* TODO
     - Add in all the types from stellar-sdk
@@ -11,7 +11,7 @@ export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
 export const EAGER_CREDITS = 100_000
 
 export async function getAccount(env: Env, publicKey: string) {
-    const { rpc } = vars(env)
+    const rpc = getRpc(env)
 
     return rpc.post('', {
         jsonrpc: "2.0",
@@ -41,7 +41,7 @@ export async function getAccount(env: Env, publicKey: string) {
 }
 
 export async function getFeeStats(env: Env) {
-    const { rpc } = vars(env)
+    const rpc = getRpc(env)
 
     return rpc.post('', {
         jsonrpc: '2.0',
@@ -56,7 +56,7 @@ export async function getFeeStats(env: Env) {
 }
 
 export async function simulateTransaction(env: Env, xdr: string) {
-    const { rpc } = vars(env)
+    const rpc = getRpc(env)
 
     return rpc.post('', {
         jsonrpc: '2.0',
@@ -74,7 +74,7 @@ export async function simulateTransaction(env: Env, xdr: string) {
 }
 
 export async function sendTransaction(env: Env, xdr: string) {
-    const { rpc } = vars(env)
+    const rpc = getRpc(env)
 
     return rpc.post('', {
         jsonrpc: '2.0',
@@ -100,7 +100,7 @@ export async function sendTransaction(env: Env, xdr: string) {
 }
 
 export async function getTransaction(env: Env, hash: string) {
-    const { rpc } = vars(env)
+    const rpc = getRpc(env)
 
     return rpc.post('', {
         jsonrpc: '2.0',

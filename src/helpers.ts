@@ -2,16 +2,26 @@ import { Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, Tra
 import { simulateTransaction } from "./common"
 import { fetcher } from "itty-fetcher";
 
-export function vars(env: Env) {
-    return {
-        rpc: fetcher({
-            base: env.RPC_URL, 
-            headers: {
-                Authorization: `Bearer ${env.RPC_KEY}`,
-            }
-        }),
-        networkPassphrase: env.NETWORK_PASSPHRASE
-    }
+export function getRpc(env: Env) {
+    const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
+    const [rpcUrl, rpcKey] = getRandomRpcUrl(rpcUrls)
+
+    return fetcher({
+        base: rpcUrl,
+        headers: rpcKey ? {
+            Authorization: `Bearer ${rpcKey}`,
+        } : undefined
+    })
+}
+
+function getRandomRpcUrl(input: (string | [string, string])[]): [string, string | null] {
+    const randomIndex = Math.floor(Math.random() * input.length);
+    const randomElement = input[randomIndex];
+
+    if (typeof randomElement === 'string')
+        return [randomElement, null]
+
+    return randomElement
 }
 
 export function wait(ms: number = 1000) {
@@ -55,8 +65,6 @@ export function getRandomNumber(min: number, max: number) {
 }
 
 export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
-    const { networkPassphrase } = vars(env)
-
     // NOTE Ensure this address is funded before trying to use it. 
     // Should also be an env var on dev ONLY
     const testKeypair = Keypair.fromSecret(env.MOCK_SK)
@@ -67,7 +75,7 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
 
     const transaction = new TransactionBuilder(mockSource, {
         fee: '0',
-        networkPassphrase,
+        networkPassphrase: env.NETWORK_PASSPHRASE,
     })
         .addOperation(Operation.invokeContractFunction({
             contract: env.NATIVE_CONTRACT_ID,
@@ -89,7 +97,7 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
 
     for (const authXDR of sim.results[0].auth) {
         const authUnsigned = xdr.SorobanAuthorizationEntry.fromXDR(authXDR, 'base64')
-        const authSigned = await authorizeEntry(authUnsigned, testKeypair, sim.latestLedger + 60, networkPassphrase)
+        const authSigned = await authorizeEntry(authUnsigned, testKeypair, sim.latestLedger + 60, env.NETWORK_PASSPHRASE)
 
         op.auth!.push(authSigned)
     }

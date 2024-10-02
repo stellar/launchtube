@@ -4,7 +4,7 @@ import { RequestLike, error, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode } from "zod"
 import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME, getFeeStats } from "../common"
 import { CreditsDurableObject } from "../credits"
-import { getMockData, vars, arraysEqualUnordered } from "../helpers"
+import { getMockData, arraysEqualUnordered } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
@@ -84,7 +84,6 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         if (debug)
             return json({ xdr: x, func: f, auth: a, fee })
 
-        const { networkPassphrase } = vars(env)
         const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub)
         const creditsStub = env.CREDITS_DURABLE_OBJECT.get(creditsId) as DurableObjectStub<CreditsDurableObject>;
 
@@ -105,7 +104,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         // Passing `xdr`
         if (x) {
-            const t = new Transaction(x, networkPassphrase)
+            const t = new Transaction(x, env.NETWORK_PASSPHRASE)
 
             if (t.operations.length !== 1)
                 throw 'Must include only one Soroban operation'
@@ -159,7 +158,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         let transaction = new TransactionBuilder(sequenceSource, {
             fee: '0',
-            networkPassphrase
+            networkPassphrase: env.NETWORK_PASSPHRASE
         })
             .addOperation(Operation.invokeContractFunction({
                 contract,
@@ -210,7 +209,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             fundKeypair,
             feeBumpFee.toString(),
             transaction,
-            networkPassphrase
+            env.NETWORK_PASSPHRASE
         )
 
         feeBumpTransaction.sign(fundKeypair)
