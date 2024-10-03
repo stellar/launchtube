@@ -20,7 +20,8 @@ export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionCo
 
     return new Response(qrcode, {
         headers: {
-            'Content-Type': 'image/png'
+            'Content-Type': 'image/png',
+            'X-Claim-Code': code
         }
     })
 }
