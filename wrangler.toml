@@ -26,6 +26,10 @@ class_name = "SequencerDurableObject"
 binding = "SUDOS"
 id = "1fcab4e76e4948ba9b728271fa51586d"
 
+[[kv_namespaces]]
+binding = "CODES"
+id = "1717f596858e4685b9b77b0ac047c2b5"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "launchtube-testnet"
@@ -57,6 +61,10 @@ class_name = "SequencerDurableObject"
 [[env.prod.kv_namespaces]]
 binding = "SUDOS"
 id = "4d86c63ffe344460ab9f740c48e01cab"
+
+[[env.prod.kv_namespaces]]
+binding = "CODES"
+id = "522dc827cd9f43e58a2810d974fb80c3"
 
 [[env.prod.d1_databases]]
 binding = "DB"

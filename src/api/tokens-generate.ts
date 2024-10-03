@@ -1,20 +1,18 @@
-import { RequestLike, error, json } from "itty-router";
+import { RequestLike, json } from "itty-router";
 import { object, preprocess, number } from "zod";
 import { CreditsDurableObject } from "../credits";
 import { sign } from "@tsndr/cloudflare-worker-jwt";
+import { checkSudoAuth } from "../helpers";
 
 export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     let ttl, credits, count;
 
     if (env.ENV === 'development') {
-        ttl = 7_257_600 // 3 months (12 weeks)
-        credits = 1_000_000_000 // 100 XLM
+        ttl = 7_257_600 // 12 weeks (3 months)
+        credits = 100 * 10_000_000 // 100 XLM
         count = 1
     } else {
-        const token = request.headers.get('Authorization').split(' ')[1]
-
-        if (!await env.SUDOS.get(token))
-            return error(401, 'Unauthorized')
+        await checkSudoAuth(request, env)
 
         const body = object({
             ttl: preprocess(Number, number()),

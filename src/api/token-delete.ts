@@ -1,11 +1,9 @@
-import { RequestLike, error, text } from "itty-router";
+import { RequestLike, text } from "itty-router";
 import { CreditsDurableObject } from "../credits";
+import { checkSudoAuth } from "../helpers";
 
 export async function apiTokenDelete(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    const token = request.headers.get('Authorization').split(' ')[1]
-
-    if (!await env.SUDOS.get(token))
-        return error(401, 'Unauthorized')
+    await checkSudoAuth(request, env)
 
     const id = env.CREDITS_DURABLE_OBJECT.idFromString(request.params.sub)
     const stub = env.CREDITS_DURABLE_OBJECT.get(id) as DurableObjectStub<CreditsDurableObject>;

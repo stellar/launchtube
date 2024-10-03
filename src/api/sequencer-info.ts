@@ -1,13 +1,11 @@
-import { RequestLike, error, json } from "itty-router";
+import { RequestLike, json } from "itty-router";
 import { SEQUENCER_ID_NAME } from "../common";
 import { SequencerDurableObject } from "../sequencer";
 import { Keypair } from "@stellar/stellar-base";
+import { checkSudoAuth } from "../helpers";
 
 export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    const token = request.headers.get('Authorization').split(' ')[1]
-
-    if (!await env.SUDOS.get(token))
-        return error(401, 'Unauthorized')
+    await checkSudoAuth(request, env)
 
     let { return: rtrn, delete: dlte, shh } = request.query
 

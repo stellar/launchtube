@@ -1,6 +1,8 @@
 import { Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder, xdr } from "@stellar/stellar-base"
 import { simulateTransaction } from "./common"
 import { fetcher } from "itty-fetcher";
+import { RequestLike, StatusError } from "itty-router";
+import { decode, verify } from "@tsndr/cloudflare-worker-jwt";
 
 export function getRpc(env: Env) {
     const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
@@ -45,6 +47,27 @@ export function addUniqItemsToArray(arr: any[], ...items: any[]) {
             ...items
         ])
     ]
+}
+
+export async function checkAuth(request: RequestLike, env: Env) {
+    const token = request.headers.get('Authorization').split(' ')[1]
+
+    if (!await verify(token, env.JWT_SECRET))
+        throw new StatusError(401, 'Unauthorized')
+
+    const { payload } = decode(token)
+
+    if (!payload?.sub)
+        throw new StatusError(401, 'Invalid')
+
+    return payload
+}
+
+export async function checkSudoAuth(request: RequestLike, env: Env) {
+    const token = request.headers.get('Authorization').split(' ')[1]
+
+    if (!await env.SUDOS.get(token))
+        throw new StatusError(401, 'Unauthorized')
 }
 
 export function removeValueFromArrayIfExists(arr: any[], value: any) {

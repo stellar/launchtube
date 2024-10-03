@@ -1,11 +1,9 @@
-import { error, json, RequestLike } from "itty-router";
+import { json, RequestLike } from "itty-router";
 import { object, string, preprocess, array } from "zod";
+import { checkSudoAuth } from "../helpers";
 
 export async function apiSql(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    const token = request.headers.get('Authorization').split(' ')[1]
-
-    if (!await env.SUDOS.get(token))
-        return error(401, 'Unauthorized')
+    await checkSudoAuth(request, env)
 
     const body = object({
         query: string(),

@@ -1,13 +1,10 @@
-import { RequestLike, error, status } from "itty-router";
+import { RequestLike, status } from "itty-router";
 import { SEQUENCER_ID_NAME } from "../common";
 import { SequencerDurableObject } from "../sequencer";
+import { checkSudoAuth } from "../helpers";
 
 export async function apiSequencerQueue(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    // TODO DRY out Authorization checks
-    const token = request.headers.get('Authorization').split(' ')[1]
-
-    if (!await env.SUDOS.get(token))
-        return error(401, 'Unauthorized')
+    await checkSudoAuth(request, env)
 
     let { count = 1 } = request.query
 

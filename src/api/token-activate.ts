@@ -24,6 +24,6 @@ export async function apiTokenActivate(request: RequestLike, env: Env, _ctx: Exe
     await stub.activate()
 
     return html(`
-        <h1>Token Activated!</h1>	
+        <h1>Token Activated!</h1>
     `)
 }

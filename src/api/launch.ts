@@ -1,22 +1,13 @@
 import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-base"
-import { verify, decode } from "@tsndr/cloudflare-worker-jwt"
-import { RequestLike, error, json } from "itty-router"
+import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode } from "zod"
 import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME, getFeeStats } from "../common"
 import { CreditsDurableObject } from "../credits"
-import { getMockData, arraysEqualUnordered } from "../helpers"
+import { getMockData, arraysEqualUnordered, checkAuth } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    const token = request.headers.get('Authorization').split(' ')[1]
-
-    if (!await verify(token, env.JWT_SECRET))
-        return error(401, 'Unauthorized')
-
-    const { payload } = decode(token)
-
-    if (!payload?.sub)
-        return error(401, 'Invalid')
+    const payload = await checkAuth(request, env)
 
     let res: any
     let credits: number
@@ -84,7 +75,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         if (debug)
             return json({ xdr: x, func: f, auth: a, fee })
 
-        const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub)
+        const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub!)
         const creditsStub = env.CREDITS_DURABLE_OBJECT.get(creditsId) as DurableObjectStub<CreditsDurableObject>;
 
         // Spend some initial credits before doing any work as a spam prevention measure. These will be refunded if the transaction succeeds
