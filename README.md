@@ -19,9 +19,9 @@ The Launchtube service aims to alleviate all of these challenges and complexitie
 
 #### Headers
 
-- `Authorization` `Bearer {jwt token}`
+- `Authorization`: `Bearer {jwt token}`
 
-If you need a Testnet JWT token just open https://testnet.launchtube.xyz/gen.
+If you need a Testnet JWT token just open https://testnet.launchtube.xyz/gen
 
 ---
 
@@ -62,11 +62,15 @@ OR
 
 #### Headers
 
-- `Content-Type` `x-www-form-urlencoded`
+- `Content-Type`: `x-www-form-urlencoded`
 
 #### Return
 
-The response of the transaction submission as `JSON` assuming it was successful. Otherwise a (hopefully) useful `JSON` error.
+The response of the transaction submission as `JSON` assuming it was successful. Otherwise a (hopefully) useful `JSON` error
+
+##### Headers
+
+- `X-Credits-Remaining`: `String` numeric value of the token's remaining credits (stroops)
 
 ---
 
@@ -94,7 +98,7 @@ Webpage form to activate your token to enable usage of the API
 
 ### `POST` `/activate`
 
-The api endpoint used by the `GET` `/` webpage form to activate your token
+The API endpoint used by the `GET` `/` webpage form to activate your token
 
 #### Body
 
@@ -104,7 +108,39 @@ The api endpoint used by the `GET` `/` webpage form to activate your token
 
 #### Headers
 
-- `Content-Type` `x-www-form-urlencoded`
+- `Content-Type`: `x-www-form-urlencoded`
+
+---
+
+### `GET` `/claim`
+
+Webpage form to create and activate a new token
+
+#### Query
+
+- `code`
+    
+    The claim `{claim code}` you were given and wish to use to create and activate a new token with
+
+---
+
+### `POST` `/claim`
+
+The API endpoint used by the `GET` `/claim` webpage form to create and activate new tokens via claim codes
+
+#### Body
+
+- `code`
+    
+    The claim `{claim code}` you were given and wish to use to create and activate a new token with
+
+#### Headers
+
+- `Content-Type`: `x-www-form-urlencoded`
+
+#### Return
+
+`HTML` page with the newly activated token you can use as the `{jwt token}` to authenticate the service
 
 ---
 
@@ -115,9 +151,23 @@ The api endpoint used by the `GET` `/` webpage form to activate your token
 
 #### Headers
 
-- `Authorization` `Bearer {auth token}`
+- `Authorization`: `Bearer {auth token}`
 
-If you need an auth token let [tyler@stellar.org](mailto:tyler@stellar.org) know.
+If you are a member of the SDF and need an auth token let [tyler@stellar.org](mailto:tyler@stellar.org) know
+
+---
+
+### `GET` `/qrcode`
+
+Generate a list of new credit JWT tokens
+    
+#### Return
+
+`PNG` QR code image linking to `{location.origin}/claim?code={claim code}`. 
+
+##### Headers
+
+- `X-Claim-Code`: `String` the claim code you can use to create new tokens
 
 ---
 
@@ -180,7 +230,7 @@ Run a SQL query on the database
 
 #### Headers
 
-- `Content-Type` `x-www-form-urlencoded`
+- `Content-Type`: `x-www-form-urlencoded`
 
 #### Return
 
@@ -205,13 +255,13 @@ e.g.
 
 ### `GET` `/seq`
 
-Get information about the sequencer Durable Object. You very probably don't ever need to run this. It's really just for system maintainers doing health or debug checks.
+Get information about the sequencer Durable Object. You very probably don't ever need to run this. It's really just for system maintainers doing health or debug checks
 
 #### Body
 
-Review the [endpoint code](./src/api/sequencer-info.ts) for available params.
+Review the [endpoint code](./src/api/sequencer-info.ts) for available params
 
 #### Return
 
-`JSON` object with information about the sequencer. Again, review the code for the exact shape of the response.
+`JSON` object with information about the sequencer. Again, review the code for the exact shape of the response
 </details>
