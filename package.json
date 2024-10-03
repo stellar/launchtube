@@ -6,6 +6,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env prod",
+    "deploy:all": "npm run deploy && npm run deploy:prod",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "build": "node esbuild.js",

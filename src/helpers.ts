@@ -49,16 +49,16 @@ export function addUniqItemsToArray(arr: any[], ...items: any[]) {
     ]
 }
 
-export async function checkAuth(request: RequestLike, env: Env) {
-    const token = request.headers.get('Authorization').split(' ')[1]
+export async function checkAuth(request: RequestLike | string, env: Env) {
+    const token = typeof request === 'string' ? request : request.headers.get('Authorization').split(' ')[1]
 
     if (!await verify(token, env.JWT_SECRET))
-        throw new StatusError(401, 'Unauthorized')
+        throw new StatusError(401, 'Invalid token')
 
     const { payload } = decode(token)
 
     if (!payload?.sub)
-        throw new StatusError(401, 'Invalid')
+        throw new StatusError(401, 'Token invalid')
 
     return payload
 }
