@@ -1,4 +1,4 @@
-import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-base";
+import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { DurableObject } from "cloudflare:workers";
 import { getAccount, sendTransaction } from "./common";
 import { addUniqItemsToArray, wait } from "./helpers";
@@ -130,7 +130,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             transaction.sign(fundKeypair)
 
-            await sendTransaction(this.env, transaction.toXDR())
+            await sendTransaction(this.env, transaction)
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {

@@ -2,7 +2,7 @@ import { verify } from "@tsndr/cloudflare-worker-jwt"
 import { error, html, RequestLike } from "itty-router"
 
 export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionContext) {
-    if (req.query.token && !await verify(req.query.token, env.JWT_SECRET))
+    if (req.query.token && !await verify(req.query.token, env.JWT_SECRET, { throwError: true }))
         return error(401, 'Invalid token')
 
     return html(`

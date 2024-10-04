@@ -1,9 +1,9 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-base"
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode } from "zod"
-import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME, getFeeStats } from "../common"
+import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
-import { getMockData, arraysEqualUnordered, checkAuth } from "../helpers"
+import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
@@ -59,8 +59,8 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         
         if (!fee) {
             try {
-                const res = await getFeeStats(env)
-                fee = parseInt(res?.sorobanInclusionFee.p50 || BASE_FEE)
+                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
+                fee = parseInt(sorobanInclusionFee.p50 || BASE_FEE)
             } catch {
                 fee = parseInt(BASE_FEE)
             }
@@ -162,7 +162,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         transaction.sign(sequenceKeypair)
 
-        const sim = await simulateTransaction(env, transaction.toXDR())
+        const { result, transactionData } = await simulateTransaction(env, transaction)
 
         /* NOTE
             - Check that we have the right auth
@@ -171,10 +171,10 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         */
         if (!arraysEqualUnordered(
             (transaction.operations[0] as Operation.InvokeHostFunction).auth?.map((a) => a.toXDR('base64')) || [],
-            sim.results[0].auth || []
+            result?.auth.map((a) => a.toXDR('base64')) || []
         )) throw 'Invalid auth'
 
-        const sorobanData = xdr.SorobanTransactionData.fromXDR(sim.transactionData, 'base64')
+        const sorobanData = transactionData.build()
         const resourceFee = sorobanData.resourceFee().toBigInt()
 
         /* NOTE 
@@ -210,16 +210,12 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         // Refund eager credits and spend the tx bid credits
         credits = await creditsStub.spendBefore(bidCredits, EAGER_CREDITS)
 
-        res = await sendTransaction(env, feeBumpTransaction.toXDR())
-
-        const feeCredits = xdr.TransactionResult.fromXDR(res.resultXdr, 'base64').feeCharged().toBigInt()
-
-        console.log(feeCredits);
+        res = await sendTransaction(env, feeBumpTransaction)
 
         // Refund the bid credits and spend the actual fee credits
         credits = await creditsStub.spendAfter(
             feeBumpTransaction.hash().toString('hex'),
-            Number(feeCredits),
+            res.feeCharged,
             bidCredits
         )
     } finally {

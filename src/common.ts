@@ -1,4 +1,4 @@
-import { xdr, Keypair, Account } from "@stellar/stellar-base";
+import { SorobanRpc, xdr, Keypair, Account, Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
 import { getRpc, wait } from "./helpers";
 
 /* TODO
@@ -13,128 +13,102 @@ export const EAGER_CREDITS = 100_000
 export async function getAccount(env: Env, publicKey: string) {
     const rpc = getRpc(env)
 
-    return rpc.post('', {
-        jsonrpc: "2.0",
-        id: 8891,
-        method: "getLedgerEntries",
-        params: {
-            keys: [
-                xdr.LedgerKey.account(
-                    new xdr.LedgerKeyAccount({
-                        accountId: Keypair.fromPublicKey(publicKey).xdrPublicKey()
-                    })
-                ).toXDR('base64')
-            ]
-        }
-    })
-        .then((res: any) => {
-            if (res.result.error)
-                throw res.result
+    return rpc.getLedgerEntries(
+        xdr.LedgerKey.account(
+            new xdr.LedgerKeyAccount({
+                accountId: Keypair.fromPublicKey(publicKey).xdrPublicKey()
+            })
+        )
+    ).then(({ entries }) => {
+        if (!entries.length)
+            throw `Account ${publicKey} not found`
 
-            if (!res.result.entries.length)
-                throw `Account ${publicKey} not found`
-
-            const account = xdr.LedgerEntryData.fromXDR(res.result.entries[0].xdr, 'base64').account()
-
-            return new Account(publicKey, account.seqNum().toString()) 
-        })
-}
-
-export async function getFeeStats(env: Env) {
-    const rpc = getRpc(env)
-
-    return rpc.post('', {
-        jsonrpc: '2.0',
-        id: 8891,
-        method: 'getFeeStats',
-    }).then((res: any) => {
-        if (res.result.error)
-            throw res.result
-
-        return res.result
+        return new Account(publicKey, entries[0].val.account().seqNum().toString()) 
     })
 }
 
-export async function simulateTransaction(env: Env, xdr: string) {
+export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
     const rpc = getRpc(env)
 
-    return rpc.post('', {
-        jsonrpc: '2.0',
-        id: 8891,
-        method: 'simulateTransaction',
-        params: {
-            transaction: xdr
-        }
-    }).then((res: any) => {
-        if (res.result.error) // TODO handle state archival 
-            throw res.result
-
-        return res.result
+    return rpc.simulateTransaction(tx)
+    .then((res) => {
+        if (SorobanRpc.Api.isSimulationRestore(res))
+            throw res // TODO support Restore scenarios
+        else if (SorobanRpc.Api.isSimulationSuccess(res))
+            return res
+        else
+            throw res
     })
 }
 
-export async function sendTransaction(env: Env, xdr: string) {
+export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
     const rpc = getRpc(env)
+    const xdr = tx.toXDR()
 
-    return rpc.post('', {
-        jsonrpc: '2.0',
-        id: 8891,
-        method: 'sendTransaction',
-        params: {
-            transaction: xdr
-        }
-    }).then((res: any) => {
-
-        // 'PENDING'
-        // 'DUPLICATE'
-        // 'TRY_AGAIN_LATER'
-        // 'ERROR'
-        if (res.result.status === 'PENDING')
-            return pollTransaction(env, res.result)
+    return rpc.sendTransaction(tx)
+    .then(({ status, hash, errorResult, diagnosticEvents, ...rest }) => {
+        if (status === 'PENDING')
+            return pollTransaction(env, rpc, hash, xdr)
         else
             throw {
-                xdr,
-                ...res.result
+                status,
+                hash,
+                envelopeXdr: xdr,
+                errorResult: errorResult?.toXDR('base64'),
+                diagnosticEvents: diagnosticEvents?.map((event) => event.toXDR('base64')),
+                ...rest
             }
     })
 }
 
-export async function getTransaction(env: Env, hash: string) {
-    const rpc = getRpc(env)
+async function pollTransaction(env: Env, rpc: SorobanRpc.Server, hash: string, xdr: string, interval = 0) {
+    const result = await rpc.getTransaction(hash)
 
-    return rpc.post('', {
-        jsonrpc: '2.0',
-        id: 8891,
-        method: 'getTransaction',
-        params: {
-            hash: hash
-        }
-    }).then((res: any) => {
+    console.log(interval, result.status);
 
-        // 'SUCCESS'
-        // 'NOT_FOUND'
-        // 'FAILED'
-        if (res.result.status === 'FAILED')
-            throw res.result
+    if (result.status === 'SUCCESS') {
+        const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, returnValue, ...rest } = result
 
-        return res.result
-    })
-}
-
-async function pollTransaction(env: Env, sendResult: any, interval = 0) {
-    const getResult = await getTransaction(env, sendResult.hash)
-
-    console.log(interval, getResult.status);
-
-    if (getResult.status === 'SUCCESS') {
         return {
-            hash: sendResult.hash,
-            ...getResult,
+            status,
+            hash,
+            feeCharged: Number(resultXdr.feeCharged().toBigInt()),
+            envelopeXdr: envelopeXdr.toXDR('base64'),
+            resultXdr: resultXdr.toXDR('base64'),
+            resultMetaXdr: resultMetaXdr.toXDR('base64'),
+            returnValue: returnValue?.toXDR('base64'),
+            diagnosticEventsXdr: diagnosticEventsXdr?.map((event) => event.toXDR('base64')),
+            ...rest
         }
-    } else if (interval >= 30)
-        throw getResult
+    }
+
+    else if (result.status === 'FAILED') {
+        const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, ...rest } = result
+        
+        throw {
+            status,
+            hash,
+            feeCharged: Number(resultXdr.feeCharged().toBigInt()),
+            envelopeXdr: envelopeXdr.toXDR('base64'),
+            resultXdr: resultXdr.toXDR('base64'),
+            resultMetaXdr: resultMetaXdr.toXDR('base64'),
+            diagnosticEventsXdr: diagnosticEventsXdr?.map((event) => event.toXDR('base64')),
+            ...rest
+        }
+    }
+
+    else if (interval >= 30) {
+        const { status, ...rest } = result
+
+        throw {
+            status,
+            hash,
+            envelopeXdr: xdr,
+            ...rest
+        }
+    }
 
     interval++
     await wait()
-    return pollTransaction(env, sendResult, interval)
+    return pollTransaction(env, rpc, hash, xdr, interval)
 }

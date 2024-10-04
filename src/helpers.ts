@@ -1,15 +1,13 @@
-import { Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder, xdr } from "@stellar/stellar-base"
 import { simulateTransaction } from "./common"
-import { fetcher } from "itty-fetcher";
 import { RequestLike, StatusError } from "itty-router";
-import { decode, verify } from "@tsndr/cloudflare-worker-jwt";
+import { verify } from "@tsndr/cloudflare-worker-jwt";
+import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder, xdr } from '@stellar/stellar-sdk/minimal';
 
 export function getRpc(env: Env) {
     const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
     const [rpcUrl, rpcKey] = getRandomRpcUrl(rpcUrls)
 
-    return fetcher({
-        base: rpcUrl,
+    return new SorobanRpc.Server(rpcUrl, {
         headers: rpcKey ? {
             Authorization: `Bearer ${rpcKey}`,
         } : undefined
@@ -51,11 +49,12 @@ export function addUniqItemsToArray(arr: any[], ...items: any[]) {
 
 export async function checkAuth(request: RequestLike | string, env: Env) {
     const token = typeof request === 'string' ? request : request.headers.get('Authorization').split(' ')[1]
+    const validToken = await verify(token, env.JWT_SECRET, { throwError: true})
 
-    if (!await verify(token, env.JWT_SECRET))
+    if (!validToken)
         throw new StatusError(401, 'Invalid token')
 
-    const { payload } = decode(token)
+    const { payload } = validToken
 
     if (!payload?.sub)
         throw new StatusError(401, 'Token invalid')
@@ -90,13 +89,13 @@ export function getRandomNumber(min: number, max: number) {
 export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
     // NOTE Ensure this address is funded before trying to use it. 
     // Should also be an env var on dev ONLY
-    const testKeypair = Keypair.fromSecret(env.MOCK_SK)
-    const testPubkey = testKeypair.publicKey()
+    const mockKeypair = Keypair.fromSecret(env.MOCK_SK)
+    const mockPubkey = mockKeypair.publicKey()
 
-    const mockPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
-    const mockSource = new Account(mockPubkey, '0')
+    const nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
+    const nullSource = new Account(nullPubkey, '0')
 
-    const transaction = new TransactionBuilder(mockSource, {
+    const transaction = new TransactionBuilder(nullSource, {
         fee: '0',
         networkPassphrase: env.NETWORK_PASSPHRASE,
     })
@@ -104,7 +103,7 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
             contract: env.NATIVE_CONTRACT_ID,
             function: 'transfer',
             args: [
-                nativeToScVal(testPubkey, { type: 'address' }),
+                nativeToScVal(mockPubkey, { type: 'address' }),
                 nativeToScVal(env.NATIVE_CONTRACT_ID, { type: 'address' }),
                 nativeToScVal(100, { type: 'i128' })
                 // nativeToScVal(-1, { type: 'i128' }) // to fail simulation
@@ -114,14 +113,11 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
         .setTimeout(30)
         .build()
 
-    const sim = await simulateTransaction(env, transaction.toXDR())
-
+    const { result, latestLedger } = await simulateTransaction(env, transaction)
     const op = transaction.operations[0] as Operation.InvokeHostFunction
 
-    for (const authXDR of sim.results[0].auth) {
-        const authUnsigned = xdr.SorobanAuthorizationEntry.fromXDR(authXDR, 'base64')
-        const authSigned = await authorizeEntry(authUnsigned, testKeypair, sim.latestLedger + 60, env.NETWORK_PASSPHRASE)
-
+    for (const auth of result?.auth || []) {
+        const authSigned = await authorizeEntry(auth, mockKeypair, latestLedger + 60, env.NETWORK_PASSPHRASE)
         op.auth!.push(authSigned)
     }
 

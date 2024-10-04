@@ -1,7 +1,7 @@
 import { RequestLike, json } from "itty-router";
 import { SEQUENCER_ID_NAME } from "../common";
 import { SequencerDurableObject } from "../sequencer";
-import { Keypair } from "@stellar/stellar-base";
+import { Keypair } from "@stellar/stellar-sdk/minimal";
 import { checkSudoAuth } from "../helpers";
 
 export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: ExecutionContext) {
