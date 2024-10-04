@@ -11,7 +11,7 @@ export async function apiQrCode(request: Request, env: Env, ctx: ExecutionContex
         const authKey = cookies['authKey'];
 
         if (authKey) try {
-            await checkSudoAuth(authKey, env)
+            await checkSudoAuth(decodeURIComponent(authKey), env)
         } catch {
             return html(htmlCode)
         } else {
