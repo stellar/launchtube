@@ -61,8 +61,9 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             try {
                 const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
                 fee = parseInt(sorobanInclusionFee.p50 || BASE_FEE)
+                fee = Math.max(fee, Number(BASE_FEE))
             } catch {
-                fee = parseInt(BASE_FEE)
+                fee = Number(BASE_FEE)
             }
 
             // Adding 1 to the fee to ensure when we divide / 2 later in launchtube we don't go below the minimum fee
