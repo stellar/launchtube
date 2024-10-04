@@ -1,4 +1,4 @@
-import { RequestLike, StatusError, error, html } from 'itty-router';
+import { html } from 'itty-router';
 import qr from 'qr-image'
 import { checkSudoAuth, parseCookies } from '../helpers';
 
@@ -25,7 +25,7 @@ export async function apiQrCode(request: Request, env: Env, ctx: ExecutionContex
     const qrcode = qr.imageSync(data, {
         ec_level: 'H',
         type: 'png',
-        size: 4,
+        size: 12,
         margin: 1,
         parse_url: true
     });
