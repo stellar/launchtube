@@ -36,12 +36,11 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
         }
 
         else {
-            const { error, events, ...rest } = res
+            const { events, ...rest } = res
 
             throw {
-                error,
+                ...rest,
                 events: events.map((event) => event.toXDR('base64')),
-                ...rest
             }
         }
     })
