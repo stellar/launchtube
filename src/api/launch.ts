@@ -60,6 +60,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         if (!fee) {
             try {
                 const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
+                
                 fee = parseInt(sorobanInclusionFee.p50 || BASE_FEE)
                 fee = Math.max(fee, Number(BASE_FEE))
             } catch {

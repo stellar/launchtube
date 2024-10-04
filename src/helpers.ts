@@ -49,7 +49,7 @@ export function addUniqItemsToArray(arr: any[], ...items: any[]) {
 
 export async function checkAuth(request: RequestLike | string, env: Env) {
     const token = typeof request === 'string' ? request : request.headers.get('Authorization').split(' ')[1]
-    const validToken = await verify(token, env.JWT_SECRET, { throwError: true})
+    const validToken = await verify(token, env.JWT_SECRET, { throwError: true })
 
     if (!validToken)
         throw new StatusError(401, 'Invalid token')
@@ -62,8 +62,8 @@ export async function checkAuth(request: RequestLike | string, env: Env) {
     return payload
 }
 
-export async function checkSudoAuth(request: RequestLike, env: Env) {
-    const token = request.headers.get('Authorization').split(' ')[1]
+export async function checkSudoAuth(request: RequestLike | string, env: Env) {
+    const token = typeof request === 'string' ? request : request.headers.get('Authorization').split(' ')[1]
 
     if (!await env.SUDOS.get(token))
         throw new StatusError(401, 'Unauthorized')
@@ -133,4 +133,14 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
             xdr: transaction.toXDR(),
             fee
         }
+}
+
+export function parseCookies(cookieHeader: string): Record<string, string> {
+    return cookieHeader
+    .split(';')
+    .reduce((cookies: Record<string, string>, cookie) => {
+        const [name, ...value] = cookie.trim().split('=');
+        cookies[name] = value.join('=');
+        return cookies;
+    }, {});
 }
