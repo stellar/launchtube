@@ -169,6 +169,9 @@ Generate a list of new credit JWT tokens
 
 - `X-Claim-Code`: `String` the claim code you can use to create new tokens
 
+> [!NOTE]  
+> For SDF members only. If you open this page without an Authorization header it will be an HTML form to input your auth token which when saved will include it as a cookie which will allow you to generate QR codes right on the page whenever you refresh the page.
+
 ---
 
 ### `GET` `/gen`
