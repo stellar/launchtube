@@ -56,7 +56,7 @@ const htmlCode = `
             <script>
                 document.querySelector('button').addEventListener('click', () => {
                     const key = document.querySelector('input').value;
-                    document.cookie = \`authKey=\${encodeURIComponent(key)}; path=/;\`;
+                    document.cookie = \`authKey=\${encodeURIComponent(key)}; path=/qrcode; max-age=604800; SameSite=Strict; Secure\`;
                     window.location.reload();
                 });
             </script>
