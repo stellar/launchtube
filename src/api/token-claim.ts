@@ -12,15 +12,15 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
 
     const { value, metadata } = await env.CODES.getWithMetadata<{ ttl: number, credits: number }>(code, 'arrayBuffer')
 
-    if (!value)
+    if (!value || !metadata)
         return error(401, 'Invalid code')
 
     await env.CODES.delete(code)
 
     const id = env.CREDITS_DURABLE_OBJECT.newUniqueId();
     const stub = env.CREDITS_DURABLE_OBJECT.get(id) as DurableObjectStub<CreditsDurableObject>;
-    const ttl = metadata?.ttl ?? 15_724_800 // 26 weeks (6 months)
-    const credits = metadata?.credits ?? 1_000 * 10_000_000 // 1,000 XLM
+    const ttl = metadata.ttl
+    const credits = metadata.credits
     const token = await sign({
         sub: id.toString(),
         exp: Math.floor((Date.now() + ttl * 1000) / 1000),

@@ -32,8 +32,8 @@ export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionCo
     });
 
     const body = object({
-        ttl: preprocess(Number, number()).optional(),
-        credits: preprocess(Number, number()).optional(),
+        ttl: preprocess(Number, number()).optional().default(15_724_800), // 6 months
+        credits: preprocess(Number, number()).optional().default(100 * 10_000_000), // 100 XLM
     }).parse(request.query)
 
     await env.CODES.put(code, Buffer.alloc(1), {

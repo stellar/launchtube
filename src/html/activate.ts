@@ -22,12 +22,16 @@ export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionCo
                     <label for="token">Token:</label>
                     <input type="text" id="token" name="token" value="${req.query.token || ''}" placeholder="Your Launchtube token" required>
                 </p>
-                <p style="margin: 0;" id="exp"></p>
-                <p style="margin: 0;" id="credits"></p>
-                <br/>
+                <div id="bonus">
+                    <p style="margin: 0;" id="exp"></p>
+                    <p style="margin: 0;" id="credits"></p>
+                    <br/>
+                </div>
                 <button type="submit">Activate</button>
             </form>
             <script>
+                const bonus = document.querySelector('#bonus');
+
                 onKeyup(document.querySelector('#token').value)
                 document.querySelector('#token').addEventListener('keyup', (e) => onKeyup(e.target.value))
 
@@ -37,9 +41,11 @@ export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionCo
                         const decoded = JSON.parse(atob(payload))
                         document.querySelector('#exp').textContent = 'Expires: ' + new Date(decoded.exp * 1000).toLocaleString()
                         document.querySelector('#credits').textContent = 'XLM: ' + (decoded.credits / 10_000_000).toLocaleString()
+                        bonus.style.display = 'block'
                     } catch {
                         document.querySelector('#exp').textContent = ''
-                        document.querySelector('#credits').textContent = ''					 
+                        document.querySelector('#credits').textContent = ''
+                        bonus.style.display = 'none'
                     }
                 }
             </script>
