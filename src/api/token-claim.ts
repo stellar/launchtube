@@ -50,15 +50,10 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
                 document.querySelector('button').addEventListener('click', () => copyToClipboard(token))
 
                 function parseToken(value) {
-                    try {
-                        const [,payload] = value.split('.')
-                        const decoded = JSON.parse(atob(payload))
-                        document.querySelector('#exp').textContent = 'Expires: ' + new Date(decoded.exp * 1000).toLocaleString()
-                        document.querySelector('#credits').textContent = 'XLM: ' + (decoded.credits / 10_000_000).toLocaleString()
-                    } catch {
-                        document.querySelector('#exp').textContent = ''
-                        document.querySelector('#credits').textContent = ''					 
-                    }
+                    const [,payload] = value.split('.')
+                    const decoded = JSON.parse(atob(payload))
+                    document.querySelector('#exp').textContent = 'Expires: ' + new Date(decoded.exp * 1000).toLocaleString()
+                    document.querySelector('#credits').textContent = 'XLM: ' + (decoded.credits / 10_000_000).toLocaleString()
                 }
                 function copyToClipboard(text) {
                     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -96,9 +91,9 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
             <style>
                 pre {
                     max-width: 500px;
-                    white-space: pre-wrap; /* Allows wrapping of the text */
-                    word-wrap: break-word; /* Break long words onto the next line */
-                    overflow-wrap: break-word; /* For better compatibility */
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
             </style>
         </body>
