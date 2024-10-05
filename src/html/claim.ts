@@ -21,7 +21,6 @@ export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionConte
                     <label for="code">Code:</label>
                     <input type="text" id="code" name="code" value="${req.query.code || ''}" placeholder="Your claim code" required>
                 </p>
-                <br/>
                 <button type="submit">Claim</button>
             </form>
         </body>

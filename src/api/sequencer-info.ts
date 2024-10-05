@@ -7,7 +7,7 @@ import { checkSudoAuth } from "../helpers";
 export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     await checkSudoAuth(request, env)
 
-    let { return: rtrn, delete: dlte, shh } = request.query
+    const { return: rtrn, delete: dlte, shh } = request.query
 
     const sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
     const sequencerStub = env.SEQUENCER_DURABLE_OBJECT.get(sequencerId) as DurableObjectStub<SequencerDurableObject>;

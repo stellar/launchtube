@@ -1,8 +1,9 @@
-import { html } from 'itty-router';
+import { html, RequestLike } from 'itty-router';
 import qr from 'qr-image'
 import { checkSudoAuth, parseCookies } from '../helpers';
+import { number, object, preprocess } from 'zod';
 
-export async function apiQrCode(request: Request, env: Env, ctx: ExecutionContext) {
+export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionContext) {
     try {
         await checkSudoAuth(request, env)
     } catch {
@@ -30,7 +31,15 @@ export async function apiQrCode(request: Request, env: Env, ctx: ExecutionContex
         parse_url: true
     });
 
-    await env.CODES.put(code, Buffer.alloc(1), { expirationTtl: 604_800 }); // 1 week
+    const body = object({
+        ttl: preprocess(Number, number()).optional(),
+        credits: preprocess(Number, number()).optional(),
+    }).parse(request.query)
+
+    await env.CODES.put(code, Buffer.alloc(1), {
+        expirationTtl: 604_800, // 1 week
+        metadata: body,
+    });
 
     return new Response(qrcode, {
         headers: {

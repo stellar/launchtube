@@ -10,15 +10,17 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
     if (!consent)
         return error(400, 'Consent required')
 
-    if (!await env.CODES.get<Uint8Array>(code))
+    const { value, metadata } = await env.CODES.getWithMetadata<{ ttl: number, credits: number }>(code, 'arrayBuffer')
+
+    if (!value)
         return error(401, 'Invalid code')
 
     await env.CODES.delete(code)
 
     const id = env.CREDITS_DURABLE_OBJECT.newUniqueId();
     const stub = env.CREDITS_DURABLE_OBJECT.get(id) as DurableObjectStub<CreditsDurableObject>;
-    const ttl = 15_724_800 // 26 weeks (6 months)
-    const credits = 1_000 * 10_000_000 // 1,000 XLM
+    const ttl = metadata?.ttl ?? 15_724_800 // 26 weeks (6 months)
+    const credits = metadata?.credits ?? 1_000 * 10_000_000 // 1,000 XLM
     const token = await sign({
         sub: id.toString(),
         exp: Math.floor((Date.now() + ttl * 1000) / 1000),
@@ -59,7 +61,6 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
                     }
                 }
                 function copyToClipboard(text) {
-                    // Check if the modern Clipboard API is available
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         return navigator.clipboard.writeText(text).then(() => {
                             console.log('Text copied to clipboard!');
@@ -67,12 +68,11 @@ export async function apiTokenClaim(request: RequestLike, env: Env, _ctx: Execut
                             console.error('Failed to copy text to clipboard:', err);
                         });
                     } else {
-                        // Fallback for older browsers
                         const textarea = document.createElement('textarea');
 
                         textarea.value = text;
-                        textarea.style.position = 'fixed'; // Avoid scrolling to the bottom
-                        textarea.style.opacity = '0'; // Hide the textarea
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
                         document.body.appendChild(textarea);
                         textarea.focus();
                         textarea.select();
