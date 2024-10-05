@@ -10,7 +10,7 @@ export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionConte
             return error(401, 'Invalid code')
 
         bonus = `
-            <p style="margin: 0;" id="exp">${'Expires: ' + new Date(Date.now() + metadata.ttl * 1000).toLocaleString()}</p>
+            <p style="margin: 0;" id="exp">${'Expires: ' + new Date(new Date(Date.now() + metadata.ttl * 1000).toISOString()).toLocaleString()}</p>
             <p style="margin: 0;" id="credits">${'XLM: ' + (metadata.credits / 10_000_000).toLocaleString()}</p>
             <br/>
         `
