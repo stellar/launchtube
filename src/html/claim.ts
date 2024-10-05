@@ -1,7 +1,8 @@
 import { error, html, RequestLike } from "itty-router";
 
 export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionContext) {
-    let bonus = ``
+    let ttl: number | undefined
+    let credits: number | undefined
 
     if (req.query.code) {
         const { value, metadata } = await env.CODES.getWithMetadata<{ ttl: number, credits: number }>(req.query.code, 'arrayBuffer')
@@ -9,11 +10,8 @@ export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionConte
         if (!value || !metadata)
             return error(401, 'Invalid code')
 
-        bonus = `
-            <p style="margin: 0;" id="exp">${'Expires: ' + new Date(new Date(Date.now() + metadata.ttl * 1000).toISOString()).toLocaleString()}</p>
-            <p style="margin: 0;" id="credits">${'XLM: ' + (metadata.credits / 10_000_000).toLocaleString()}</p>
-            <br/>
-        `
+        ttl = metadata.ttl
+        credits = metadata.credits
     }
 
     return html(`
@@ -34,20 +32,33 @@ export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionConte
                     <input type="text" id="code" name="code" value="${req.query.code || ''}" placeholder="Your claim code" required>
                 </p>
                 <div id="bonus">
-                    ${bonus}
+                    <p style="margin: 0;" id="exp"></p>
+                    <p style="margin: 0;" id="credits"></p>
+                    <br/>
                 </div>
                 <button type="submit">Claim</button>
             </form>
             <script>
                 const code = "${req.query.code}";
+                const ttl = ${ttl};
+                const credits = ${credits};
                 const bonus = document.querySelector('#bonus');
 
+                onKeyup(document.querySelector('#code').value)
                 document.querySelector('#code').addEventListener('keyup', (e) => onKeyup(e.target.value));
 
                 function onKeyup(value) {
-                    if (value === code) {
+                    if (
+                        value === code
+                        && ttl
+                        && credits
+                    ) {
+                        document.querySelector('#exp').textContent = 'Expires: ' + new Date(Date.now() + ttl * 1000).toLocaleString()
+                        document.querySelector('#credits').textContent = 'XLM: ' + (credits / 10_000_000).toLocaleString()
                         bonus.style.display = 'block'
                     } else {
+                        document.querySelector('#exp').textContent = ''
+                        document.querySelector('#credits').textContent = ''
                         bonus.style.display = 'none'
                     }
                 }
