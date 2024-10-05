@@ -15,7 +15,7 @@ export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionCo
             <h1>Activate Launchtube Token</h1>
             <form method="POST" action="/activate">
                 <p>
-                    <label for="consent">Agree to <a href="/terms-and-conditions">T&C</a>:</label>
+                    <label for="consent">Agree to <a href="/terms-and-conditions" target="_blank" rel="nofollow">T&C</a>:</label>
                     <input type="checkbox" id="consent" name="consent" required>
                 </p>
                 <p>

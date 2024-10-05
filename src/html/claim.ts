@@ -26,7 +26,7 @@ export async function htmlClaim(req: RequestLike, env: Env, _ctx: ExecutionConte
             <h1>Claim Launchtube Token</h1>
             <form method="POST" action="/claim">
                 <p>
-                    <label for="consent">Agree to <a href="/terms-and-conditions">T&C</a>:</label>
+                    <label for="consent">Agree to <a href="/terms-and-conditions" target="_blank" rel="nofollow">T&C</a>:</label>
                     <input type="checkbox" id="consent" name="consent" required>
                 </p>
                 <p>
