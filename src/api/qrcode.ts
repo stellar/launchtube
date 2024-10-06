@@ -33,12 +33,15 @@ export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionCo
 
     const body = object({
         ttl: preprocess(Number, number()).optional().default(15_724_800), // 6 months
-        credits: preprocess(Number, number()).optional().default(100 * 10_000_000), // 100 XLM
+        xlm: preprocess(Number, number().gte(1).lte(10_000)).optional().default(100), // 100 XLM
     }).parse(request.query)
 
     await env.CODES.put(code, Buffer.alloc(1), {
         expirationTtl: 604_800, // 1 week
-        metadata: body,
+        metadata: {
+            ttl: body.ttl,
+            credits: body.xlm * 10_000_000,
+        },
     });
 
     return new Response(qrcode, {

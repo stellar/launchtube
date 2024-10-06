@@ -16,12 +16,12 @@ export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: Ex
 
         const body = object({
             ttl: preprocess(Number, number()),
-            credits: preprocess(Number, number()),
+            xlm: preprocess(Number, number().gte(1).lte(10_000)),
             count: preprocess(Number, number().gte(1).lte(100)),
         }).parse(request.query)
     
         ttl = body.ttl
-        credits = body.credits
+        credits = body.xlm * 10_000_000
         count = body.count
     }
 

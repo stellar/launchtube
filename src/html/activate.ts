@@ -31,9 +31,10 @@ export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionCo
             </form>
             <script>
                 const bonus = document.querySelector('#bonus');
+                const token = document.querySelector('#token');
 
-                onKeyup(document.querySelector('#token').value)
-                document.querySelector('#token').addEventListener('keyup', (e) => onKeyup(e.target.value))
+                onKeyup(token.value)
+                token.addEventListener('keyup', (e) => onKeyup(e.target.value))
 
                 function onKeyup(value) {
                     try {
@@ -42,6 +43,7 @@ export async function htmlActivate(req: RequestLike, env: Env, _ctx: ExecutionCo
                         document.querySelector('#exp').textContent = 'Expires: ' + new Date(decoded.exp * 1000).toLocaleString()
                         document.querySelector('#credits').textContent = 'XLM: ' + (decoded.credits / 10_000_000).toLocaleString()
                         bonus.style.display = 'block'
+                        token.value = value.replace(/[^A-Za-z0-9\-_\.]/g, '');
                     } catch {
                         document.querySelector('#exp').textContent = ''
                         document.querySelector('#credits').textContent = ''
