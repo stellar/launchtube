@@ -36,19 +36,25 @@ router
 	.options('*', preflight)
 	.all('*', withParams)
 	// Public endpoints
+	.get('/', () => new Response(null, {
+		status: 307,
+		headers: {
+			'Location': 'https://github.com/stellar/launchtube'
+		}
+	}))
+	.post('/', apiLaunch)
 	.get('/terms-and-conditions', htmlTermsAndConditions)
-	.get('/', htmlActivate)
+	.get('/activate', htmlActivate)
 	.post('/activate', apiTokenActivate)
 	.get('/claim', htmlClaim)
 	.post('/claim', apiTokenClaim)
 	.get('/info', apiTokenInfo)
-	.post('/', apiLaunch)
 	// Private endpoints
 	.get('/qrcode', apiQrCode)
 	.get('/gen', apiTokensGenerate)
 	.delete('/:sub', apiTokenDelete)
-	.post('/seq', apiSequencerQueue)
 	.get('/seq', apiSequencerInfo)
+	.post('/seq', apiSequencerQueue)
 	.post('/sql', apiSql)
 	// ---
 	.all('*', () => error(404))

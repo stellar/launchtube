@@ -84,7 +84,7 @@ Get the remaining credits (stoops) available for your token
 
 ---
 
-### `GET` `/`
+### `GET` `/activate`
 
 Webpage form to activate your token to enable usage of the API
 
