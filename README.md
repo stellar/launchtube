@@ -24,8 +24,9 @@ The Launchtube service aims to alleviate all of these challenges and complexitie
 
 - `Authorization`: `Bearer {jwt token}`
 
-* For Testnet JWT tokens just open https://testnet.launchtube.xyz/gen
-* For Mainnet tokens drop a note in the `#launchtube` channel in [our Discord](https://discord.gg/stellardev)
+> [!NOTE]  
+> * For Testnet JWT tokens just open https://testnet.launchtube.xyz/gen
+> * For Mainnet tokens drop a note in the `#launchtube` channel in [our Discord](https://discord.gg/stellardev)
 
 ---
 
