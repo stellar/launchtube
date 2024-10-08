@@ -8,7 +8,7 @@ Getting Stellar transactions successfully submitted to the network can be a chor
 The Launchtube service aims to alleviate all of these challenges and complexities by giving you an API which accepts Soroban ops and then handles getting those entries successfully submitted to the network. No XLM or G-addresses required! Just simulate and sign your Soroban ops, submit them to Launchtube, and we'll handle getting them onchain. Too easy!
 
 > [!CAUTION]  
-> Launchtube is an experimental service and while SDF maintains a mainnet implementation we make no guarantees about it's stability, availablility or longevity. Do not use SDF's Launchtube service for mission-critical production services.
+> Launchtube is an experimental service and while SDF maintains a mainnet implementation we make no guarantees about its stability, availablility or longevity. Do not use SDF's Launchtube service for mission-critical production services.
 
 
 ## Base URL
