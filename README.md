@@ -14,7 +14,7 @@ The Launchtube service aims to alleviate all of these challenges and complexitie
 ## Base URL
 
 * `Testnet` `https://testnet.launchtube.xyz`
-* `Public` `https://launchtube.xyz`
+* `Mainnet` `https://launchtube.xyz`
 
 ## Public Endpoints
 
@@ -24,7 +24,8 @@ The Launchtube service aims to alleviate all of these challenges and complexitie
 
 - `Authorization`: `Bearer {jwt token}`
 
-If you need a Testnet JWT token just open https://testnet.launchtube.xyz/gen
+* For Testnet JWT tokens just open https://testnet.launchtube.xyz/gen
+* For Mainnet tokens drop a note in the `#launchtube` channel in [our Discord](https://discord.gg/stellardev)
 
 ---
 
