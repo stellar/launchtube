@@ -1,17 +1,20 @@
 # Launchtube
 
-Getting Stellar transactions successfully submitted to the network can be a chore. You've got a lot to think about between fees, sequence numbers, block times, retries, rate limits, ledger limits, and more. This gets even more tricky when trying to submit Stellar smart wallet operations. Soroban contracts can't pay Stellar transaction fees, they maintain nonces not sequence numbers. 
+![DALL·E 2024-10-07 20 36 03](https://github.com/user-attachments/assets/05d2289d-f0e4-4eb7-9701-59a7b0d3b353)
 
-The Launchtube service aims to alleviate all of these challenges and complexities by giving you an API which accepts Soroban ops and then handles getting those entries successfully submitted to the network. No XLM or native G-addresses required! Just simulate and sign your Soroban ops, submit them to Launchtube, and we'll handle getting them onchain. Too easy!
+
+Getting Stellar transactions successfully submitted to the network can be a chore. You've got a lot to think about between XLM fees, sequence numbers, block times, retries, rate limits, ledger limits, and more. This gets even trickier when trying to submit smart contract invocations. Soroban contracts can't pay Stellar transaction fees and they maintain nonces not sequence numbers.
+
+The Launchtube service aims to alleviate all of these challenges and complexities by giving you an API which accepts Soroban ops and then handles getting those entries successfully submitted to the network. No XLM or G-addresses required! Just simulate and sign your Soroban ops, submit them to Launchtube, and we'll handle getting them onchain. Too easy!
 
 > [!CAUTION]  
-> Launchtube is an experimental service and while SDF maintains a mainnet implmenetation we make no guarantees about it's stability, availablility or longevity. Do not use SDF's Launchtube service for mission-critical production services.
+> Launchtube is an experimental service and while SDF maintains a mainnet implementation we make no guarantees about its stability, availablility or longevity. Do not use SDF's Launchtube service for mission-critical production services.
 
 
 ## Base URL
 
 * `Testnet` `https://testnet.launchtube.xyz`
-* `Public` `https://launchtube.xyz`
+* `Mainnet` `https://launchtube.xyz`
 
 ## Public Endpoints
 
@@ -21,7 +24,9 @@ The Launchtube service aims to alleviate all of these challenges and complexitie
 
 - `Authorization`: `Bearer {jwt token}`
 
-If you need a Testnet JWT token just open https://testnet.launchtube.xyz/gen
+> [!NOTE]  
+> * For Testnet JWT tokens just open https://testnet.launchtube.xyz/gen
+> * For Mainnet tokens drop a note in the `#launchtube` channel in [our Discord](https://discord.gg/stellardev)
 
 ---
 
