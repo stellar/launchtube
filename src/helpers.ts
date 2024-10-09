@@ -1,7 +1,7 @@
-import { simulateTransaction } from "./common"
+import { getAccount, simulateTransaction } from "./common"
 import { RequestLike, StatusError } from "itty-router";
 import { verify } from "@tsndr/cloudflare-worker-jwt";
-import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder, xdr } from '@stellar/stellar-sdk/minimal';
+import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk/minimal';
 
 export function getRpc(env: Env) {
     const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
@@ -87,15 +87,28 @@ export function getRandomNumber(min: number, max: number) {
 }
 
 export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
+    const fee = formData.get('fee') || undefined
+    const sim = formData.get('sim') || undefined
+
     // NOTE Ensure this address is funded before trying to use it. 
     // Should also be an env var on dev ONLY
     const mockKeypair = Keypair.fromSecret(env.MOCK_SK)
-    const mockPubkey = mockKeypair.publicKey()
+    const mockPubkey = mockKeypair.publicKey() // GBXHQWJOQEGLWXYG6BKEEARNFMJVDYTQFCLEHJGU5MFXVHUO6OHTEMS7
 
-    const nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
-    const nullSource = new Account(nullPubkey, '0')
+    let nullKeypair: Keypair | undefined
+    let nullPubkey: string
+    let nullSource: Account
 
-    const transaction = new TransactionBuilder(nullSource, {
+    if (sim === 'false') {
+        nullKeypair = Keypair.fromRawEd25519Seed(Buffer.alloc(32))
+        nullPubkey = nullKeypair.publicKey() // GA5WUJ54Z23KILLCUOUNAKTPBVZWKMQVO4O6EQ5GHLAERIMLLHNCSKYH
+        nullSource = await getAccount(env, nullPubkey)
+    } else {
+        nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
+        nullSource = new Account(nullPubkey, '0')
+    }
+
+    let transaction = new TransactionBuilder(nullSource, {
         fee: '0',
         networkPassphrase: env.NETWORK_PASSPHRASE,
     })
@@ -108,7 +121,8 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
                 nativeToScVal(100, { type: 'i128' })
                 // nativeToScVal(-1, { type: 'i128' }) // to fail simulation
             ],
-            auth: []
+            auth: [],
+            source: sim === 'false' ? mockPubkey : undefined
         }))
         .setTimeout(30)
         .build()
@@ -121,26 +135,35 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
         op.auth!.push(authSigned)
     }
 
-    const fee = formData.get('fee') || undefined
+    const { transactionData } = await simulateTransaction(env, transaction)
+
+    transaction = TransactionBuilder.cloneFrom(transaction, {
+        fee: transactionData.build().resourceFee().toString(),
+    }).setSorobanData(transactionData.build()).build()
+
+    if (sim === 'false' && nullKeypair)
+        transaction.sign(nullKeypair, mockKeypair)
 
     return type === 'op'
         ? {
             func: op.func.toXDR('base64'),
             auth: JSON.stringify(op.auth?.map((auth) => auth.toXDR('base64'))),
-            fee
+            fee,
+            sim,
         }
         : {
             xdr: transaction.toXDR(),
-            fee
+            fee,
+            sim,
         }
 }
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
     return cookieHeader
-    .split(';')
-    .reduce((cookies: Record<string, string>, cookie) => {
-        const [name, ...value] = cookie.trim().split('=');
-        cookies[name] = value.join('=');
-        return cookies;
-    }, {});
+        .split(';')
+        .reduce((cookies: Record<string, string>, cookie) => {
+            const [name, ...value] = cookie.trim().split('=');
+            cookies[name] = value.join('=');
+            return cookies;
+        }, {});
 }
