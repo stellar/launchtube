@@ -27,20 +27,23 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 
     return rpc.simulateTransaction(tx)
     .then((res) => {
-        if (SorobanRpc.Api.isSimulationSuccess(res))
-            return res
-        
         // TODO support Restore scenarios
-        else if (SorobanRpc.Api.isSimulationRestore(res)) {
+        if (SorobanRpc.Api.isSimulationRestore(res))
             throw rpc._simulateTransaction(tx)
-        }
+
+        else if (SorobanRpc.Api.isSimulationSuccess(res))
+            return res
 
         else {
-            const { events, ...rest } = res
+            const { events, error, ...rest } = res
+
+            delete (rest as { _parsed?: boolean })._parsed;
 
             throw {
-                ...rest,
+                error,
+                envelopeXdr: tx.toXDR(),
                 events: events.map((event) => event.toXDR('base64')),
+                ...rest,
             }
         }
     })
