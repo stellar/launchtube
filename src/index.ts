@@ -14,6 +14,7 @@ import { htmlActivate } from "./html/activate";
 import { apiQrCode } from "./api/qrcode";
 import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
+import { ZodError } from "zod";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -64,10 +65,14 @@ const handler = {
 		router
 			.fetch(req, env, ctx)
 			.catch((err) => {
-				console.error(err);
+				// console.error(err);
 				return error(
 					typeof err?.status === 'number' ? err.status : 400,
-					err instanceof Error ? err?.message : err
+					err instanceof ZodError
+						? err
+						: err instanceof Error
+							? err?.message || err
+							: err
 				)
 			})
 			.then((r) => corsify(r, req))
