@@ -1,7 +1,7 @@
-import { simulateTransaction } from "./common"
+import { getAccount, simulateTransaction } from "./common"
 import { RequestLike, StatusError } from "itty-router";
 import { verify } from "@tsndr/cloudflare-worker-jwt";
-import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder, xdr } from '@stellar/stellar-sdk/minimal';
+import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk/minimal';
 
 export function getRpc(env: Env) {
     const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
@@ -86,16 +86,29 @@ export function getRandomNumber(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
+export async function getMockData(env: Env, formData: FormData) {
+    const type = formData.get('mock')
+    const isSim = formData.get('sim') !== 'false'
+
     // NOTE Ensure this address is funded before trying to use it. 
     // Should also be an env var on dev ONLY
     const mockKeypair = Keypair.fromSecret(env.MOCK_SK)
-    const mockPubkey = mockKeypair.publicKey()
+    const mockPubkey = mockKeypair.publicKey() // GBXHQWJOQEGLWXYG6BKEEARNFMJVDYTQFCLEHJGU5MFXVHUO6OHTEMS7
 
-    const nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
-    const nullSource = new Account(nullPubkey, '0')
+    let nullKeypair: Keypair | undefined
+    let nullPubkey: string
+    let nullSource: Account
 
-    const transaction = new TransactionBuilder(nullSource, {
+    if (isSim) {
+        nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
+        nullSource = new Account(nullPubkey, '0')
+    } else {
+        nullKeypair = Keypair.fromRawEd25519Seed(Buffer.alloc(32))
+        nullPubkey = nullKeypair.publicKey() // GA5WUJ54Z23KILLCUOUNAKTPBVZWKMQVO4O6EQ5GHLAERIMLLHNCSKYH
+        nullSource = await getAccount(env, nullPubkey)
+    }
+
+    let transaction = new TransactionBuilder(nullSource, {
         fee: '0',
         networkPassphrase: env.NETWORK_PASSPHRASE,
     })
@@ -106,9 +119,9 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
                 nativeToScVal(mockPubkey, { type: 'address' }),
                 nativeToScVal(env.NATIVE_CONTRACT_ID, { type: 'address' }),
                 nativeToScVal(100, { type: 'i128' })
-                // nativeToScVal(-1, { type: 'i128' }) // to fail simulation
             ],
-            auth: []
+            auth: [],
+            source: isSim ? undefined : mockPubkey
         }))
         .setTimeout(30)
         .build()
@@ -117,30 +130,37 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
     const op = transaction.operations[0] as Operation.InvokeHostFunction
 
     for (const auth of result?.auth || []) {
-        const authSigned = await authorizeEntry(auth, mockKeypair, latestLedger + 60, env.NETWORK_PASSPHRASE)
-        op.auth!.push(authSigned)
+        op.auth?.push(
+            await authorizeEntry(auth, mockKeypair, latestLedger + 6, env.NETWORK_PASSPHRASE)
+        )
     }
 
-    const fee = formData.get('fee') || undefined
+    const { transactionData } = await simulateTransaction(env, transaction)
+
+    transaction = TransactionBuilder.cloneFrom(transaction, {
+        fee: transactionData.build().resourceFee().toString(),
+        sorobanData: transactionData.build()
+    }).build()
+
+    if (!isSim && nullKeypair)
+        transaction.sign(nullKeypair, mockKeypair)
 
     return type === 'op'
         ? {
             func: op.func.toXDR('base64'),
-            auth: JSON.stringify(op.auth?.map((auth) => auth.toXDR('base64'))),
-            fee
+            auth: op.auth?.map((auth) => auth.toXDR('base64')),
         }
         : {
             xdr: transaction.toXDR(),
-            fee
         }
 }
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
     return cookieHeader
-    .split(';')
-    .reduce((cookies: Record<string, string>, cookie) => {
-        const [name, ...value] = cookie.trim().split('=');
-        cookies[name] = value.join('=');
-        return cookies;
-    }, {});
+        .split(';')
+        .reduce((cookies: Record<string, string>, cookie) => {
+            const [name, ...value] = cookie.trim().split('=');
+            cookies[name] = value.join('=');
+            return cookies;
+        }, {});
 }

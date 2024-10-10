@@ -1,23 +1,28 @@
 import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
-import { object, string, preprocess, array, number, ZodIssueCode } from "zod"
+import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
 import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
+import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
 
     let res: any
     let credits: number
-    let sequencerId: DurableObjectId
     let sequencerStub: DurableObjectStub<SequencerDurableObject> | undefined
     let sequenceSecret: string | undefined
 
     try {
         const formData = await request.formData() as FormData
         const schema = object({
+            mock: zenum(['xdr', 'op']).optional(),
+            sim: preprocess(
+                (val) => val ? val === 'true' : true,
+                boolean().optional()
+            ),
             xdr: string().optional(),
             func: string().optional(),
             auth: preprocess(
@@ -26,57 +31,58 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             ),
             fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)).optional(),
         }).superRefine((input, ctx) => {
-            if (!input.xdr && !input.func && !input.auth)
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: 'Must pass either `xdr` or `func` and `auth`'
-                })
-            else if (input.xdr && (input.func || input.auth))
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: '`func` and `auth` must be omitted when passing `xdr`'
-                })
-            else if (!input.xdr && !(input.func && input.auth))
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: '`func` and `auth` are both required when omitting `xdr`'
-                })
+            if (input.mock) {
+                if (input.sim === false && input.mock !== 'xdr')
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `sim = false` without `mock = xdr`'
+                    })
+                else if (input.xdr || input.func || input.auth)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `mock` with `xdr`, `func`, or `auth`'
+                    })
+            }
+
+            else {
+                if (input.sim === false && !input.xdr)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `sim = false` without `xdr`'
+                    })
+                else if (!input.xdr && !input.func && !input.auth)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Must pass either `xdr` or `func` and `auth`'
+                    })
+                else if (input.xdr && (input.func || input.auth))
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: '`func` and `auth` must be omitted when passing `xdr`'
+                    })
+                else if (!input.xdr && !(input.func && input.auth))
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: '`func` and `auth` are both required when omitting `xdr`'
+                    })
+            }
         })
 
-        const mock = (formData.get('mock') || "") as "xdr" | "op" | ""
-        const isMock = ['xdr', 'op'].includes(mock)
+        const debug = formData.get('debug')
+        const mock = formData.get('mock')
+        const isMock = env.ENV === 'development' && mock && ['xdr', 'op'].includes(mock)
 
         let {
             xdr: x,
             func: f,
             auth: a,
             fee,
-        } = schema.parse(
-            isMock && env.ENV === 'development'
-                ? await getMockData(env, mock, formData) // Only ever mock in development
-                : Object.fromEntries(formData)
+            sim,
+        } = Object.assign(
+            isMock ? await getMockData(env, formData) : {},
+            schema.parse(Object.fromEntries(formData))
         )
         
-        if (!fee) {
-            try {
-                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
-                
-                fee = parseInt(sorobanInclusionFee.p50 || BASE_FEE)
-                fee = Math.max(fee, Number(BASE_FEE))
-            } catch {
-                fee = Number(BASE_FEE)
-            }
-
-            // Adding 1 to the fee to ensure when we divide / 2 later in launchtube we don't go below the minimum fee
-            // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
-            fee = (fee + 1) * 2
-        }
-
-        const debug = formData.get('debug') === 'true'
-
-        if (debug)
-            return json({ xdr: x, func: f, auth: a, fee })
-
         const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub!)
         const creditsStub = env.CREDITS_DURABLE_OBJECT.get(creditsId) as DurableObjectStub<CreditsDurableObject>;
 
@@ -84,7 +90,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         // TODO at some point we should decide if the failure was user error or system error and refund the credits in case of system error
         credits = await creditsStub.spendBefore(EAGER_CREDITS)
 
-        sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
+        const sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
         sequencerStub = env.SEQUENCER_DURABLE_OBJECT.get(sequencerId) as DurableObjectStub<SequencerDurableObject>;
         sequenceSecret = await sequencerStub.getSequence()
 
@@ -92,23 +98,24 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         const sequencePubkey = sequenceKeypair.publicKey()
         const sequenceSource = await getAccount(env, sequencePubkey)
 
+        let tx: Transaction | undefined
+        let op: Operation | undefined
         let func: xdr.HostFunction
         let auth: xdr.SorobanAuthorizationEntry[] | undefined
 
         // Passing `xdr`
         if (x) {
-            const t = new Transaction(x, env.NETWORK_PASSPHRASE)
+            tx = new Transaction(x, env.NETWORK_PASSPHRASE)
 
-            if (t.operations.length !== 1)
+            if (tx.operations.length !== 1)
                 throw 'Must include only one Soroban operation'
 
-            for (const op of t.operations) {
+            for (const op of tx.operations) {
                 if (op.type !== 'invokeHostFunction')
                     throw 'Must include only one operation of type `invokeHostFunction`'
             }
 
-            const op = t.operations[0] as Operation.InvokeHostFunction
-
+            op = tx.operations[0] as Operation.InvokeHostFunction
             func = op.func
             auth = op.auth
         }
@@ -116,29 +123,40 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         // Passing `func` and `auth`
         else if (f && a) {
             func = xdr.HostFunction.fromXDR(f, 'base64')
-            auth = a?.map((auth) => xdr.SorobanAuthorizationEntry.fromXDR(auth, 'base64'))
+            auth = a.map((auth) => xdr.SorobanAuthorizationEntry.fromXDR(auth, 'base64'))
         }
 
         else
             throw 'Invalid request'
 
-        if (func.switch().name !== 'hostFunctionTypeInvokeContract')
+        if (func.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract())
             throw 'Operation func must be of type `hostFunctionTypeInvokeContract`'
 
         // Do a full audit of the auth entries
         for (const a of auth || []) {
-            switch (a.credentials().switch().name) {
-                case 'sorobanCredentialsSourceAccount':
-                    throw '`sorobanCredentialsSourceAccount` credentials are not supported'
-                case 'sorobanCredentialsAddress':
+            switch (a.credentials().switch()) {
+                case xdr.SorobanCredentialsType.sorobanCredentialsSourceAccount():
+                    // If we're simulating using we must error on `sorobanCredentialsSourceAccount`
+                    // This is due to simulation rebuilding the transaction. Any borrowed signature is incredibly unlikely to succeed
+                    if (sim) {
+                        throw 'Set `sim = false` to use `sorobanCredentialsSourceAccount`'
+                    }
+
+                    // Ensure if we're using invoker auth it's not the sequence account
+                    else if (
+                        tx?.source === sequencePubkey
+                        || op?.source === sequencePubkey
+                    ) throw '`sorobanCredentialsSourceAccount` is invalid'
+                    break;
+                case xdr.SorobanCredentialsType.sorobanCredentialsAddress():
                     // Check to ensure the auth isn't using any system addresses
-                    if (a.credentials().address().address().switch().name === 'scAddressTypeAccount') {
+                    if (a.credentials().address().address().switch() === xdr.ScAddressType.scAddressTypeAccount()) {
                         const pk = a.credentials().address().address().accountId()
 
                         if (
-                            pk.switch().name === 'publicKeyTypeEd25519'
+                            pk.switch() === xdr.PublicKeyType.publicKeyTypeEd25519()
                             && Address.account(pk.ed25519()).toString() === sequencePubkey
-                        ) throw '`scAddressTypeAccount` credentials are invalid'
+                        ) throw '`sorobanCredentialsAddress` is invalid'
                     }
                     break;
                 default:
@@ -146,38 +164,102 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             }
         }
 
-        const invokeContract = func.invokeContract()
-        const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
+        let resourceFee: xdr.Int64
+        let transaction: Transaction
 
-        let transaction = new TransactionBuilder(sequenceSource, {
-            fee: '0',
-            networkPassphrase: env.NETWORK_PASSPHRASE
+        if (sim) {
+            const invokeContract = func.invokeContract()
+            const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
+
+            let transaction_builder: TransactionBuilder = new TransactionBuilder(sequenceSource, {
+                fee: '0',
+                networkPassphrase: env.NETWORK_PASSPHRASE,
+                timebounds: tx?.timeBounds || {
+                    minTime: 0,
+                    maxTime: Math.floor(Date.now() / 1000) + DEFAULT_TIMEOUT
+                },
+                memo: tx?.memo,
+                ledgerbounds: tx?.ledgerBounds,
+                minAccountSequence: tx?.minAccountSequence,
+                minAccountSequenceAge: tx?.minAccountSequenceAge,
+                minAccountSequenceLedgerGap: tx?.minAccountSequenceLedgerGap,
+                extraSigners: tx?.extraSigners,
+            })
+                .addOperation(Operation.invokeContractFunction({
+                    contract,
+                    function: invokeContract.functionName().toString(),
+                    args: invokeContract.args(),
+                    auth,
+                    source: op?.source
+                }))
+
+            transaction = transaction_builder.build()
+
+            const { result, transactionData } = await simulateTransaction(env, transaction)
+
+            /*
+                - Check that we have the right auth
+                    The transaction ops before simulation and after simulation should be identical
+                    Submitted ops should already be entirely valid thus simulation shouldn't alter them in any way
+            */
+            if (!arraysEqualUnordered(
+                auth?.map((a) => a.toXDR('base64')) || [],
+                result?.auth.map((a) => a.toXDR('base64')) || []
+            )) throw 'Auth invalid'
+
+            const sorobanData = transactionData.build()
+            
+            resourceFee = sorobanData.resourceFee()
+            transaction = TransactionBuilder
+                .cloneFrom(transaction, {
+                    fee: resourceFee.toString(), // NOTE inner tx fee cannot be less than the resource fee or the tx will be invalid
+                    sorobanData
+                }).build()
+
+            tx?.signatures.forEach((sig) => transaction.addDecoratedSignature(sig));
+            transaction.sign(sequenceKeypair)
+        }
+
+        else if (tx) {
+            switch (tx.toEnvelope().switch()) {
+                case xdr.EnvelopeType.envelopeTypeTx():
+                    const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
+                    
+                    resourceFee = sorobanData.resourceFee()
+                    transaction = tx
+
+                    break;
+                default:
+                    throw 'Invalid transaction envelope type'
+            }
+        }
+
+        else {
+            throw 'Invalid request'
+        }
+
+        // It should just assume the xdr fee
+        if (!fee) {
+            try {
+                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
+
+                fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
+                fee = Math.max(fee, Number(BASE_FEE))
+            } catch {
+                fee = Number(BASE_FEE)
+            }
+        }
+
+        // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
+        // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+        fee = (fee + 1) * 2
+
+        if (debug) return json({
+            xdr: x,
+            func: f,
+            auth: a,
+            fee,
         })
-            .addOperation(Operation.invokeContractFunction({
-                contract,
-                function: invokeContract.functionName().toString(),
-                args: invokeContract.args(),
-                auth
-            }))
-            .setTimeout(5 * 60)
-            .build()
-
-        transaction.sign(sequenceKeypair)
-
-        const { result, transactionData } = await simulateTransaction(env, transaction)
-
-        /* NOTE
-            - Check that we have the right auth
-                The transaction ops before simulation and after simulation should be identical
-                Submitted ops should already be entirely valid thus simulation shouldn't alter them in any way
-        */
-        if (!arraysEqualUnordered(
-            (transaction.operations[0] as Operation.InvokeHostFunction).auth?.map((a) => a.toXDR('base64')) || [],
-            result?.auth.map((a) => a.toXDR('base64')) || []
-        )) throw 'Invalid auth'
-
-        const sorobanData = transactionData.build()
-        const resourceFee = sorobanData.resourceFee().toBigInt()
 
         /* NOTE 
             Divided by 2 as a workaround to my workaround solution where TransactionBuilder.buildFeeBumpTransaction tries to be smart about the op base fee
@@ -186,16 +268,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             https://github.com/stellar/js-stellar-base/compare/master...inner-fee-fix
             https://discord.com/channels/897514728459468821/1245935726424752220
         */
-        const feeBumpFee = (BigInt(fee) + resourceFee) / 2n
-
-        transaction = TransactionBuilder
-            .cloneFrom(transaction, {
-                fee: resourceFee.toString(), // NOTE inner tx fee cannot be less than the resource fee or the tx will be invalid
-                sorobanData
-            })
-            .build()
-
-        transaction.sign(sequenceKeypair)
+        const feeBumpFee = (BigInt(fee) + resourceFee.toBigInt()) / 2n
 
         const fundKeypair = Keypair.fromSecret(env.FUND_SK)
         const feeBumpTransaction = TransactionBuilder.buildFeeBumpTransaction(
@@ -212,6 +285,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         // Refund eager credits and spend the tx bid credits
         credits = await creditsStub.spendBefore(bidCredits, EAGER_CREDITS)
 
+        // Send the transaction
         res = await sendTransaction(env, feeBumpTransaction)
 
         // Refund the bid credits and spend the actual fee credits
