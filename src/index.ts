@@ -65,7 +65,7 @@ const handler = {
 		router
 			.fetch(req, env, ctx)
 			.catch((err) => {
-				// console.error(err);
+				console.error(err);
 				return error(
 					typeof err?.status === 'number' ? err.status : 400,
 					err instanceof ZodError

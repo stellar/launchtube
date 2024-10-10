@@ -1,23 +1,28 @@
 import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
-import { object, string, preprocess, array, number, ZodIssueCode, boolean } from "zod"
+import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
 import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
+import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
 
     let res: any
     let credits: number
-    let sequencerId: DurableObjectId
     let sequencerStub: DurableObjectStub<SequencerDurableObject> | undefined
     let sequenceSecret: string | undefined
 
     try {
         const formData = await request.formData() as FormData
         const schema = object({
+            mock: zenum(['xdr', 'op']).optional(),
+            sim: preprocess(
+                (val) => val ? val === 'true' : true,
+                boolean().optional()
+            ),
             xdr: string().optional(),
             func: string().optional(),
             auth: preprocess(
@@ -25,42 +30,47 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 array(string()).optional()
             ),
             fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)).optional(),
-            sim: preprocess(
-                (val) => val ? val === 'true' : true,
-                boolean().optional()
-            ),
         }).superRefine((input, ctx) => {
-            if (!input.xdr && !input.func && !input.auth)
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: 'Must pass either `xdr` or `func` and `auth`'
-                })
-            else if (input.xdr && (input.func || input.auth))
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: '`func` and `auth` must be omitted when passing `xdr`'
-                })
-            else if (!input.xdr && !(input.func && input.auth))
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: '`func` and `auth` are both required when omitting `xdr`'
-                })
+            if (input.mock) {
+                if (input.sim === false && input.mock !== 'xdr')
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `sim = false` without `mock = xdr`'
+                    })
+                else if (input.xdr || input.func || input.auth)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `mock` with `xdr`, `func`, or `auth`'
+                    })
+            }
 
-            if (input.sim === false && !input.xdr)
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: 'Cannot pass `sim = false` without `xdr`'
-                })
-
-            if (input.sim === false && input.fee)
-                ctx.addIssue({
-                    code: ZodIssueCode.custom,
-                    message: 'Cannot pass `sim = false` with `fee`'
-                })
+            else {
+                if (input.sim === false && !input.xdr)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Cannot pass `sim = false` without `xdr`'
+                    })
+                else if (!input.xdr && !input.func && !input.auth)
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: 'Must pass either `xdr` or `func` and `auth`'
+                    })
+                else if (input.xdr && (input.func || input.auth))
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: '`func` and `auth` must be omitted when passing `xdr`'
+                    })
+                else if (!input.xdr && !(input.func && input.auth))
+                    ctx.addIssue({
+                        code: ZodIssueCode.custom,
+                        message: '`func` and `auth` are both required when omitting `xdr`'
+                    })
+            }
         })
 
-        const mock = (formData.get('mock') || "") as "xdr" | "op" | ""
-        const isMock = ['xdr', 'op'].includes(mock)
+        const debug = formData.get('debug')
+        const mock = formData.get('mock')
+        const isMock = env.ENV === 'development' && mock && ['xdr', 'op'].includes(mock)
 
         let {
             xdr: x,
@@ -68,32 +78,11 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             auth: a,
             fee,
             sim,
-        } = schema.parse(
-            isMock && env.ENV === 'development'
-                ? await getMockData(env, mock, formData) // Only ever mock in development
-                : Object.fromEntries(formData)
+        } = Object.assign(
+            isMock ? await getMockData(env, formData) : {},
+            schema.parse(Object.fromEntries(formData))
         )
-
-        if (!fee) {
-            try {
-                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
-
-                fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
-                fee = Math.max(fee, Number(BASE_FEE))
-            } catch {
-                fee = Number(BASE_FEE)
-            }
-
-            // Adding 1 to the fee to ensure when we divide / 2 later in launchtube we don't go below the minimum fee
-            // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
-            fee = (fee + 1) * 2
-        }
-
-        const debug = formData.get('debug') === 'true'
-
-        if (debug)
-            return json({ xdr: x, func: f, auth: a, fee })
-
+        
         const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub!)
         const creditsStub = env.CREDITS_DURABLE_OBJECT.get(creditsId) as DurableObjectStub<CreditsDurableObject>;
 
@@ -101,7 +90,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         // TODO at some point we should decide if the failure was user error or system error and refund the credits in case of system error
         credits = await creditsStub.spendBefore(EAGER_CREDITS)
 
-        sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
+        const sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
         sequencerStub = env.SEQUENCER_DURABLE_OBJECT.get(sequencerId) as DurableObjectStub<SequencerDurableObject>;
         sequenceSecret = await sequencerStub.getSequence()
 
@@ -175,7 +164,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             }
         }
 
-        let feeBumpFee: bigint
+        let resourceFee: xdr.Int64
         let transaction: Transaction
 
         if (sim) {
@@ -183,10 +172,13 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
 
             let transaction_builder: TransactionBuilder = new TransactionBuilder(sequenceSource, {
-                fee: tx?.fee || '0',
-                networkPassphrase: tx?.networkPassphrase || env.NETWORK_PASSPHRASE,
+                fee: '0',
+                networkPassphrase: env.NETWORK_PASSPHRASE,
+                timebounds: tx?.timeBounds || {
+                    minTime: 0,
+                    maxTime: Math.floor(Date.now() / 1000) + DEFAULT_TIMEOUT
+                },
                 memo: tx?.memo,
-                timebounds: tx?.timeBounds || { minTime: 0, maxTime: 5 * 60 },
                 ledgerbounds: tx?.ledgerBounds,
                 minAccountSequence: tx?.minAccountSequence,
                 minAccountSequenceAge: tx?.minAccountSequenceAge,
@@ -216,23 +208,13 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             )) throw 'Auth invalid'
 
             const sorobanData = transactionData.build()
-            const resourceFee = sorobanData.resourceFee()
-
-            /* NOTE 
-                Divided by 2 as a workaround to my workaround solution where TransactionBuilder.buildFeeBumpTransaction tries to be smart about the op base fee
-                Note the fee is also part of the divide by 2 which means this will be the max in addition to the resource fee you'll pay for both the inner fee and the fee-bump combined
-                https://github.com/stellar/js-stellar-base/issues/749
-                https://github.com/stellar/js-stellar-base/compare/master...inner-fee-fix
-                https://discord.com/channels/897514728459468821/1245935726424752220
-            */
-            feeBumpFee = (BigInt(fee) + resourceFee.toBigInt()) / 2n
-
+            
+            resourceFee = sorobanData.resourceFee()
             transaction = TransactionBuilder
                 .cloneFrom(transaction, {
                     fee: resourceFee.toString(), // NOTE inner tx fee cannot be less than the resource fee or the tx will be invalid
                     sorobanData
-                })
-                .build()
+                }).build()
 
             tx?.signatures.forEach((sig) => transaction.addDecoratedSignature(sig));
             transaction.sign(sequenceKeypair)
@@ -242,9 +224,8 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             switch (tx.toEnvelope().switch()) {
                 case xdr.EnvelopeType.envelopeTypeTx():
                     const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
-                    const resourceFee = sorobanData.resourceFee()
-
-                    feeBumpFee = (BigInt(fee) + resourceFee.toBigInt()) / 2n
+                    
+                    resourceFee = sorobanData.resourceFee()
                     transaction = tx
 
                     break;
@@ -256,6 +237,38 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         else {
             throw 'Invalid request'
         }
+
+        // It should just assume the xdr fee
+        if (!fee) {
+            try {
+                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
+
+                fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
+                fee = Math.max(fee, Number(BASE_FEE))
+            } catch {
+                fee = Number(BASE_FEE)
+            }
+        }
+
+        // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
+        // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+        fee = (fee + 1) * 2
+
+        if (debug) return json({
+            xdr: x,
+            func: f,
+            auth: a,
+            fee,
+        })
+
+        /* NOTE 
+            Divided by 2 as a workaround to my workaround solution where TransactionBuilder.buildFeeBumpTransaction tries to be smart about the op base fee
+            Note the fee is also part of the divide by 2 which means this will be the max in addition to the resource fee you'll pay for both the inner fee and the fee-bump combined
+            https://github.com/stellar/js-stellar-base/issues/749
+            https://github.com/stellar/js-stellar-base/compare/master...inner-fee-fix
+            https://discord.com/channels/897514728459468821/1245935726424752220
+        */
+        const feeBumpFee = (BigInt(fee) + resourceFee.toBigInt()) / 2n
 
         const fundKeypair = Keypair.fromSecret(env.FUND_SK)
         const feeBumpTransaction = TransactionBuilder.buildFeeBumpTransaction(

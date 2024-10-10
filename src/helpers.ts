@@ -86,9 +86,9 @@ export function getRandomNumber(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: FormData) {
-    const fee = formData.get('fee') || undefined
-    const sim = formData.get('sim') || undefined
+export async function getMockData(env: Env, formData: FormData) {
+    const type = formData.get('mock')
+    const isSim = formData.get('sim') !== 'false'
 
     // NOTE Ensure this address is funded before trying to use it. 
     // Should also be an env var on dev ONLY
@@ -99,13 +99,13 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
     let nullPubkey: string
     let nullSource: Account
 
-    if (sim === 'false') {
+    if (isSim) {
+        nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
+        nullSource = new Account(nullPubkey, '0')
+    } else {
         nullKeypair = Keypair.fromRawEd25519Seed(Buffer.alloc(32))
         nullPubkey = nullKeypair.publicKey() // GA5WUJ54Z23KILLCUOUNAKTPBVZWKMQVO4O6EQ5GHLAERIMLLHNCSKYH
         nullSource = await getAccount(env, nullPubkey)
-    } else {
-        nullPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
-        nullSource = new Account(nullPubkey, '0')
     }
 
     let transaction = new TransactionBuilder(nullSource, {
@@ -119,10 +119,9 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
                 nativeToScVal(mockPubkey, { type: 'address' }),
                 nativeToScVal(env.NATIVE_CONTRACT_ID, { type: 'address' }),
                 nativeToScVal(100, { type: 'i128' })
-                // nativeToScVal(-1, { type: 'i128' }) // to fail simulation
             ],
             auth: [],
-            source: sim === 'false' ? mockPubkey : undefined
+            source: isSim ? undefined : mockPubkey
         }))
         .setTimeout(30)
         .build()
@@ -131,30 +130,28 @@ export async function getMockData(env: Env, type: 'xdr' | 'op' | '', formData: F
     const op = transaction.operations[0] as Operation.InvokeHostFunction
 
     for (const auth of result?.auth || []) {
-        const authSigned = await authorizeEntry(auth, mockKeypair, latestLedger + 60, env.NETWORK_PASSPHRASE)
-        op.auth!.push(authSigned)
+        op.auth?.push(
+            await authorizeEntry(auth, mockKeypair, latestLedger + 6, env.NETWORK_PASSPHRASE)
+        )
     }
 
     const { transactionData } = await simulateTransaction(env, transaction)
 
     transaction = TransactionBuilder.cloneFrom(transaction, {
         fee: transactionData.build().resourceFee().toString(),
-    }).setSorobanData(transactionData.build()).build()
+        sorobanData: transactionData.build()
+    }).build()
 
-    if (sim === 'false' && nullKeypair)
+    if (!isSim && nullKeypair)
         transaction.sign(nullKeypair, mockKeypair)
 
     return type === 'op'
         ? {
             func: op.func.toXDR('base64'),
-            auth: JSON.stringify(op.auth?.map((auth) => auth.toXDR('base64'))),
-            fee,
-            sim,
+            auth: op.auth?.map((auth) => auth.toXDR('base64')),
         }
         : {
             xdr: transaction.toXDR(),
-            fee,
-            sim,
         }
 }
 

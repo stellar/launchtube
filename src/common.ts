@@ -26,10 +26,13 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
     const rpc = getRpc(env)
 
     return rpc.simulateTransaction(tx)
-    .then((res) => {
+    .then(async (res) => {
         // TODO support Restore scenarios
         if (SorobanRpc.Api.isSimulationRestore(res))
-            throw rpc._simulateTransaction(tx)
+            throw {
+                ...(await rpc._simulateTransaction(tx)),
+                error: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
+            }
 
         else if (SorobanRpc.Api.isSimulationSuccess(res))
             return res
