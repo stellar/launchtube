@@ -286,7 +286,12 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         credits = await creditsStub.spendBefore(bidCredits, EAGER_CREDITS)
 
         // Send the transaction
-        res = await sendTransaction(env, feeBumpTransaction)
+        try {
+            res = await sendTransaction(env, feeBumpTransaction)
+        } catch (err: any) {
+            console.error(err)
+            throw err
+        }
 
         // Refund the bid credits and spend the actual fee credits
         credits = await creditsStub.spendAfter(
