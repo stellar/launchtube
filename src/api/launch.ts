@@ -289,7 +289,9 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         try {
             res = await sendTransaction(env, feeBumpTransaction)
         } catch (err: any) {
-            console.error(err)
+            if (err?.feeCharged)
+                credits = await creditsStub.spendBefore(err.feeCharged, bidCredits)
+
             throw err
         }
 
