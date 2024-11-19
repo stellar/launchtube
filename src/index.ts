@@ -15,6 +15,8 @@ import { apiQrCode } from "./api/qrcode";
 import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
+import { returnAllSequence, SEQUENCER_ID_NAME } from "./common";
+// import { SEQUENCER_ID_NAME } from "../common";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -75,7 +77,13 @@ const handler = {
 							: err
 				)
 			})
-			.then((r) => corsify(r, req))
+			.then((r) => corsify(r, req)),
+
+	scheduled: (
+		_ctrl: ScheduledController,
+		env: Env,
+		ctx: ExecutionContext,
+	) => ctx.waitUntil(returnAllSequence(env)),
 }
 
 export {

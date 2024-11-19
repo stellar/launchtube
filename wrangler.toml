@@ -2,7 +2,7 @@
 name = "launchtube"
 main = "dist/index.js"
 compatibility_date = "2024-05-12"
-workers_dev = true
+workers_dev = false
 minify = true
 
 [build]
@@ -11,6 +11,9 @@ command = "npm run build"
 [[migrations]]
 tag = "v1"
 new_classes = ["CreditsDurableObject", "SequencerDurableObject"]
+
+[triggers]
+crons = [ "* * * * *" ]
 
 ### DEV ###
 
@@ -40,10 +43,8 @@ global = "globalThis"
 
 [vars]
 ENV = "development"
-RPC_URLS = '["https://soroban-testnet.stellar.org"]'
 NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
 NATIVE_CONTRACT_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
-MOCK_SK = "SCOXOZQWWXRJJYXWOHY4DYDH5KXMELFBIMRPPRBYHBV23SQO2KM3NSXZ"
 
 ### PROD ###
 

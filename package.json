@@ -8,7 +8,7 @@
     "deploy:prod": "wrangler deploy --env prod",
     "deploy:all": "pnpm run deploy && pnpm run deploy:prod",
     "dev": "wrangler dev",
-    "start": "wrangler dev",
+    "start": "pnpm run dev",
     "build": "node esbuild.js",
     "types": "wrangler types"
   },

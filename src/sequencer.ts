@@ -13,8 +13,10 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
     public async getData() {
         const index = await this.ctx.storage.get<number>('index') || 0
-        const pool = await this.ctx.storage.list({ prefix: 'pool:' })
-        const field = await this.ctx.storage.list({ prefix: 'field:' })
+        const pool = await this.ctx.storage.list<Date>({ prefix: 'pool:' })
+        const field = await this.ctx.storage.list<Date>({ prefix: 'field:' })
+
+        // TODO need to return the dates as well, the values
 
         return {
             ready: this.ready,
@@ -22,8 +24,8 @@ export class SequencerDurableObject extends DurableObject<Env> {
             index,
             poolCount: pool.size,
             fieldCount: field.size,
-            pool: [...pool.entries()],
-            field: [...field.entries()]
+            pool,
+            field,
         }
     }
     public async queueSequences(count: number) {
@@ -37,7 +39,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
         return this.pollSequence()
     }
     public async getSequence(): Promise<string> {
-        const items = await this.ctx.storage.list<boolean>({ prefix: 'pool:', limit: 1 })
+        const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 1 })
 
         if (items.size <= 0)
             throw 'Too many transactions queued. Please try again later'
@@ -46,7 +48,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
         const sequenceSecret = key.split(':')[1]
 
         this.ctx.storage.delete(`pool:${sequenceSecret}`)
-        this.ctx.storage.put(`field:${sequenceSecret}`, true)
+        this.ctx.storage.put(`field:${sequenceSecret}`, new Date())
 
         return sequenceSecret
     }
@@ -56,7 +58,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
     }
     public async returnSequence(sequence: string) {
         this.ctx.storage.delete(`field:${sequence}`)
-        this.ctx.storage.put(`pool:${sequence}`, true)
+        this.ctx.storage.put(`pool:${sequence}`, new Date())
     }
 
     // e.g. scenario
@@ -134,7 +136,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {
-                this.ctx.storage.put(`pool:${sequenceSecret}`, true)
+                this.ctx.storage.put(`field:${sequenceSecret}`, new Date())
             }
         } catch (err: any) {
             console.error(err);
