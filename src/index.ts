@@ -15,8 +15,7 @@ import { apiQrCode } from "./api/qrcode";
 import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
-import { returnAllSequence, SEQUENCER_ID_NAME } from "./common";
-// import { SEQUENCER_ID_NAME } from "../common";
+import { returnAllSequence } from "./common";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
