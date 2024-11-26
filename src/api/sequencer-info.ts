@@ -23,7 +23,7 @@ export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: Exe
                     rtrn === 'all' &&
                     (
                         typeof date === 'boolean'
-                        || Date.now() - date.getTime() > 60 * 1000 * 5 // 5 minutes
+                        || Date.now() - await date.getTime() > 60 * 1000 * 5 // 5 minutes
                     )
                 )
                 || rtrn === Keypair.fromSecret(s).publicKey()

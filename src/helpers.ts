@@ -1,13 +1,14 @@
 import { getAccount, simulateTransaction } from "./common"
 import { RequestLike, StatusError } from "itty-router";
 import { verify } from "@tsndr/cloudflare-worker-jwt";
-import { SorobanRpc, Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk/minimal';
+import { Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk/minimal';
+import { Server } from "@stellar/stellar-sdk/rpc";
 
 export function getRpc(env: Env) {
     const rpcUrls = JSON.parse(env.RPC_URLS) as (string | [string, string])[]
     const [rpcUrl, rpcKey] = getRandomRpcUrl(rpcUrls)
 
-    return new SorobanRpc.Server(rpcUrl, {
+    return new Server(rpcUrl, {
         headers: rpcKey ? {
             Authorization: `Bearer ${rpcKey}`,
         } : undefined

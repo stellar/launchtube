@@ -1,6 +1,7 @@
-import { SorobanRpc, xdr, Keypair, Account, Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
+import { xdr, Keypair, Account, Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
 import { getRpc, wait } from "./helpers";
 import { SequencerDurableObject } from "./sequencer";
+import { Api, Server } from "@stellar/stellar-sdk/rpc";
 
 export const MAX_U32 = 2 ** 32 - 1
 export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
@@ -29,13 +30,13 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
     return rpc.simulateTransaction(tx)
         .then(async (res) => {
             // TODO support Restore scenarios
-            if (SorobanRpc.Api.isSimulationRestore(res))
+            if (Api.isSimulationRestore(res))
                 throw {
                     ...(await rpc._simulateTransaction(tx)),
                     error: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                 }
 
-            else if (SorobanRpc.Api.isSimulationSuccess(res))
+            else if (Api.isSimulationSuccess(res))
                 return res
 
             else {
@@ -73,7 +74,7 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         })
 }
 
-async function pollTransaction(env: Env, rpc: SorobanRpc.Server, hash: string, xdr: string, interval = 0) {
+async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string, interval = 0) {
     const result = await rpc.getTransaction(hash)
 
     console.log(interval, result.status);
@@ -126,6 +127,8 @@ async function pollTransaction(env: Env, rpc: SorobanRpc.Server, hash: string, x
 }
 
 export async function returnAllSequence(env: Env) {
+    // TODO the fact we need this because regularly sequence accounts are not being returned is concerning to me
+
     const sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
     const sequencerStub = env.SEQUENCER_DURABLE_OBJECT.get(sequencerId) as DurableObjectStub<SequencerDurableObject>;
     const rawData = await sequencerStub.getData()
@@ -133,7 +136,7 @@ export async function returnAllSequence(env: Env) {
     for (const [key, date] of rawData.field.entries()) {
         if (
             typeof date === 'boolean'
-            || Date.now() - date.getTime() > 60 * 1000 * 5 // 5 minutes
+            || Date.now() - await date.getTime() > 60 * 1000 * 5 // 5 minutes
         ) {
             const [, s] = key.split(':')
             await sequencerStub.returnSequence(s)

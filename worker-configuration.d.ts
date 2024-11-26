@@ -3,13 +3,13 @@
 interface Env {
 	SUDOS: KVNamespace;
 	CODES: KVNamespace;
-	RPC_URLS: string;
+	ENV: string;
 	NETWORK_PASSPHRASE: string;
-	MOCK_SK: string;
 	NATIVE_CONTRACT_ID: string;
+	RPC_URLS: string;
+	MOCK_SK: string;
 	FUND_SK: string;
 	JWT_SECRET: string;
-	ENV: string;
 	CREDITS_DURABLE_OBJECT: DurableObjectNamespace<import("./dist/index").CreditsDurableObject>;
 	SEQUENCER_DURABLE_OBJECT: DurableObjectNamespace<import("./dist/index").SequencerDurableObject>;
 	DB: D1Database;

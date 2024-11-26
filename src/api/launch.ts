@@ -303,6 +303,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         )
     } finally {
         // if this fails we'd lose the sequence keypair. Fine because sequences are derived and thus re-discoverable
+        // TODO are we sure this gets called if `sendTransaction` fails?
         if (sequencerStub && sequenceSecret)
             await sequencerStub.returnSequence(sequenceSecret)
     }
