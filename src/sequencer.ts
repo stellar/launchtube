@@ -1,7 +1,7 @@
 import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { DurableObject } from "cloudflare:workers";
-import { getAccount, sendTransaction } from "./common";
-import { addUniqItemsToArray, wait } from "./helpers";
+import { sendTransaction } from "./common";
+import { addUniqItemsToArray, getRpc, wait } from "./helpers";
 
 export class SequencerDurableObject extends DurableObject<Env> {
     private ready: boolean = true
@@ -111,7 +111,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             const fundKeypair = Keypair.fromSecret(this.env.FUND_SK)
             const fundPubkey = fundKeypair.publicKey()
-            const fundSource = await getAccount(this.env, fundPubkey)
+            const fundSource = await getRpc(this.env).getAccount(fundPubkey)
 
             let transaction: TransactionBuilder | Transaction = new TransactionBuilder(fundSource, {
                 fee: (100_000).toString(),

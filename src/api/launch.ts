@@ -1,7 +1,7 @@
 import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
-import { getAccount, simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
+import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
 import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
@@ -96,7 +96,6 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         const sequenceKeypair = Keypair.fromSecret(sequenceSecret)
         const sequencePubkey = sequenceKeypair.publicKey()
-        const sequenceSource = await getAccount(env, sequencePubkey)
 
         let tx: Transaction | undefined
         let op: Operation | undefined
@@ -129,8 +128,10 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         else
             throw 'Invalid request'
 
-        if (func.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract())
-            throw 'Operation func must be of type `hostFunctionTypeInvokeContract`'
+        if (
+            func.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract()
+            && func.switch() !== xdr.HostFunctionType.hostFunctionTypeCreateContractV2()
+        ) throw 'Operation func must be of type `hostFunctionTypeInvokeContract`'
 
         // Do a full audit of the auth entries
         for (const a of auth || []) {
@@ -139,7 +140,8 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                     // If we're simulating using we must error on `sorobanCredentialsSourceAccount`
                     // This is due to simulation rebuilding the transaction. Any borrowed signature is incredibly unlikely to succeed
                     if (sim) {
-                        throw 'Set `sim = false` to use `sorobanCredentialsSourceAccount`'
+                        sim = false
+                        // throw 'Set `sim = false` to use `sorobanCredentialsSourceAccount`'
                     }
 
                     // Ensure if we're using invoker auth it's not the sequence account
@@ -170,6 +172,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         if (sim) {
             const invokeContract = func.invokeContract()
             const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
+            const sequenceSource = await getRpc(env).getAccount(sequencePubkey)
 
             let transaction_builder: TransactionBuilder = new TransactionBuilder(sequenceSource, {
                 fee: '0',
@@ -240,12 +243,15 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
         // It should just assume the xdr fee
         if (!fee) {
+            const rpc = getRpc(env)
+
             try {
-                const { sorobanInclusionFee } = await getRpc(env).getFeeStats()
+                const { sorobanInclusionFee } = await rpc.getFeeStats()
 
                 fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
                 fee = Math.max(fee, Number(BASE_FEE))
             } catch {
+                console.log('getFeeStats error', rpc.serverURL);
                 fee = Number(BASE_FEE)
             }
         }

@@ -1,4 +1,4 @@
-import { getAccount, simulateTransaction } from "./common"
+import { simulateTransaction } from "./common"
 import { RequestLike, StatusError } from "itty-router";
 import { verify } from "@tsndr/cloudflare-worker-jwt";
 import { Account, authorizeEntry, Keypair, nativeToScVal, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk/minimal';
@@ -106,7 +106,7 @@ export async function getMockData(env: Env, formData: FormData) {
     } else {
         nullKeypair = Keypair.fromRawEd25519Seed(Buffer.alloc(32))
         nullPubkey = nullKeypair.publicKey() // GA5WUJ54Z23KILLCUOUNAKTPBVZWKMQVO4O6EQ5GHLAERIMLLHNCSKYH
-        nullSource = await getAccount(env, nullPubkey)
+        nullSource = await getRpc(env).getAccount(nullPubkey)
     }
 
     let transaction = new TransactionBuilder(nullSource, {

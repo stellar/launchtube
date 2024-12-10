@@ -1,4 +1,4 @@
-import { xdr, Keypair, Account, Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
+import { Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
 import { getRpc, wait } from "./helpers";
 import { SequencerDurableObject } from "./sequencer";
 import { Api, Server } from "@stellar/stellar-sdk/rpc";
@@ -6,23 +6,6 @@ import { Api, Server } from "@stellar/stellar-sdk/rpc";
 export const MAX_U32 = 2 ** 32 - 1
 export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
 export const EAGER_CREDITS = 100_000
-
-export async function getAccount(env: Env, publicKey: string) {
-    const rpc = getRpc(env)
-
-    return rpc.getLedgerEntries(
-        xdr.LedgerKey.account(
-            new xdr.LedgerKeyAccount({
-                accountId: Keypair.fromPublicKey(publicKey).xdrPublicKey()
-            })
-        )
-    ).then(({ entries }) => {
-        if (!entries.length)
-            throw `Account ${publicKey} not found`
-
-        return new Account(publicKey, entries[0].val.account().seqNum().toString())
-    })
-}
 
 export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
     const rpc = getRpc(env)
@@ -44,6 +27,8 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 
                 delete (rest as { _parsed?: boolean })._parsed;
 
+                console.log('simulateTransaction error', rpc.serverURL);
+
                 throw {
                     error,
                     envelopeXdr: tx.toXDR(),
@@ -62,7 +47,9 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         .then(({ status, hash, errorResult, diagnosticEvents, ...rest }) => {
             if (status === 'PENDING')
                 return pollTransaction(env, rpc, hash, xdr)
-            else
+            else {
+                console.log('sendTransaction error', rpc.serverURL);
+
                 throw {
                     status,
                     hash,
@@ -70,7 +57,8 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
                     errorResult: errorResult?.toXDR('base64'),
                     diagnosticEvents: diagnosticEvents?.map((event) => event.toXDR('base64')),
                     ...rest
-                }
+                }   
+            }
         })
 }
 
