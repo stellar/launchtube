@@ -27,8 +27,6 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 
                 delete (rest as { _parsed?: boolean })._parsed;
 
-                console.log('simulateTransaction error', rpc.serverURL);
-
                 throw {
                     error,
                     envelopeXdr: tx.toXDR(),
@@ -48,8 +46,6 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
             if (status === 'PENDING')
                 return pollTransaction(env, rpc, hash, xdr)
             else {
-                console.log('sendTransaction error', rpc.serverURL);
-
                 throw {
                     status,
                     hash,
@@ -65,7 +61,7 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
 async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string, interval = 0) {
     const result = await rpc.getTransaction(hash)
 
-    console.log(interval, result.status);
+    // console.log(interval, result.status);
 
     if (result.status === 'SUCCESS') {
         const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, returnValue, ...rest } = result
