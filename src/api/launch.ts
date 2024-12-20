@@ -254,11 +254,18 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 console.log('getFeeStats error', rpc.serverURL);
                 fee = Number(BASE_FEE)
             }
-        }
 
-        // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
-        // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
-        fee = (fee + 1) * 2
+            // Increase the fee by a random number from 1 through the `BASE_FEE` just to ensure we're not underpaying
+            // and because Stellar doesn't seem to like when too many transactions with the same inclusion fee are being submitted
+            fee += Math.floor(Math.random() * Number(BASE_FEE)) + 1;
+
+            // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+            fee = fee * 2
+        } else {
+            // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
+            // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+            fee = (fee + 1) * 2
+        }
 
         if (debug) return json({
             xdr: x,
