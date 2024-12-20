@@ -16,6 +16,8 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
             if (Api.isSimulationRestore(res))
                 throw {
                     ...(await rpc._simulateTransaction(tx)),
+                    type: 'simulate',
+                    rpc: rpc.serverURL,
                     error: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                 }
 
@@ -28,6 +30,8 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
                 delete (rest as { _parsed?: boolean })._parsed;
 
                 throw {
+                    type: 'simulate',
+                    rpc: rpc.serverURL,
                     error,
                     envelopeXdr: tx.toXDR(),
                     events: events.map((event) => event.toXDR('base64')),
@@ -47,6 +51,8 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
                 return pollTransaction(env, rpc, hash, xdr)
             else {
                 throw {
+                    type: 'send',
+                    rpc: rpc.serverURL,
                     status,
                     hash,
                     envelopeXdr: xdr,
@@ -83,6 +89,8 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
         const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, ...rest } = result
 
         throw {
+            type: 'send',
+            rpc: rpc.serverURL,
             status,
             hash,
             feeCharged: Number(resultXdr.feeCharged().toBigInt()),
@@ -98,6 +106,8 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
         const { status, ...rest } = result
 
         throw {
+            type: 'send',
+            rpc: rpc.serverURL,
             status,
             hash,
             envelopeXdr: xdr,

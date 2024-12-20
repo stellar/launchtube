@@ -66,7 +66,12 @@ const handler = {
 		router
 			.fetch(req, env, ctx)
 			.catch((err) => {
-				console.error(err);
+				if (err?.type !== 'simulate')
+					console.error(err);
+
+				if (err?.rpc)
+					delete err.rpc;
+				
 				return error(
 					typeof err?.status === 'number' ? err.status : 400,
 					err instanceof ZodError
