@@ -28,17 +28,9 @@ export class SequencerDurableObject extends DurableObject<Env> {
             field,
         }
     }
-    public async queueSequences(count: number) {
-        let i = 0
-
-        while (i < count) {
-            await this.queueSequence()
-            i++
-        }
-
-        return this.pollSequence()
-    }
     public async getSequence(): Promise<string> {
+        // I need to test if it's possible to get the first item in the list more than once in times of concurrent requests
+        // Did this. We're good.
         const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 1 })
 
         if (items.size <= 0)
@@ -47,18 +39,18 @@ export class SequencerDurableObject extends DurableObject<Env> {
         const [[key]] = items.entries()
         const sequenceSecret = key.split(':')[1]
 
-        this.ctx.storage.delete(`pool:${sequenceSecret}`)
-        this.ctx.storage.put(`field:${sequenceSecret}`, new Date())
+        await this.ctx.storage.delete(`pool:${sequenceSecret}`)
+        await this.ctx.storage.put(`field:${sequenceSecret}`, new Date())
 
         return sequenceSecret
     }
     public async deleteSequence(sequence: string) {
-        this.ctx.storage.delete(`field:${sequence}`)
-        this.ctx.storage.delete(`pool:${sequence}`)
+        await this.ctx.storage.delete(`field:${sequence}`)
+        await this.ctx.storage.delete(`pool:${sequence}`)
     }
     public async returnSequence(sequence: string) {
-        this.ctx.storage.delete(`field:${sequence}`)
-        this.ctx.storage.put(`pool:${sequence}`, new Date())
+        await this.ctx.storage.delete(`field:${sequence}`)
+        await this.ctx.storage.put(`pool:${sequence}`, new Date())
     }
 
     // e.g. scenario
@@ -69,6 +61,16 @@ export class SequencerDurableObject extends DurableObject<Env> {
     // In case of success or failure we need to communicate that back to the 25 pending requests
     // Repeat taking the next batch of queued sequences 
 
+    public async queueSequences(count: number) {
+        let i = 0
+
+        while (i < count) {
+            await this.queueSequence()
+            i++
+        }
+
+        return this.pollSequence()
+    }
     private async queueSequence() {
         if (this.queue.length >= 25)
             throw 'Too many sequences queued. Please try again later'
@@ -136,7 +138,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {
-                this.ctx.storage.put(`field:${sequenceSecret}`, new Date())
+                this.ctx.storage.put(`pool:${sequenceSecret}`, new Date())
             }
         } catch (err: any) {
             console.error(err);

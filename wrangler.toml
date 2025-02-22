@@ -16,7 +16,7 @@ tag = "v1"
 new_classes = ["CreditsDurableObject", "SequencerDurableObject"]
 
 [triggers]
-crons = [ "* * * * *" ]
+crons = [ "*/5 * * * *" ]
 
 ### DEV ###
 

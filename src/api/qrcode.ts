@@ -1,7 +1,7 @@
 import { html, RequestLike } from 'itty-router';
 import qr from 'qr-image'
 import { checkSudoAuth, parseCookies } from '../helpers';
-import { number, object, preprocess } from 'zod';
+import { boolean, number, object, preprocess } from 'zod';
 
 export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionContext) {
     try {
@@ -34,6 +34,10 @@ export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionCo
     const body = object({
         ttl: preprocess(Number, number()).optional().default(15_724_800), // 6 months
         xlm: preprocess(Number, number().gte(1).lte(10_000)).optional().default(100), // 100 XLM
+        claim: preprocess(
+            (val) => val ? val === 'true' : false,
+            boolean().optional()
+        ),
     }).parse(request.query)
 
     await env.CODES.put(code, Buffer.alloc(1), {
@@ -44,12 +48,24 @@ export async function apiQrCode(request: RequestLike, env: Env, ctx: ExecutionCo
         },
     });
 
-    return new Response(qrcode, {
-        headers: {
-            'Content-Type': 'image/png',
-            'X-Claim-Code': code
-        }
-    })
+    if (body.claim) {
+        return new Response(null, {
+            status: 307,
+            headers: {
+                'Location': data,
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        })
+    } else {
+        return new Response(qrcode, {
+            headers: {
+                'Content-Type': 'image/png',
+                'X-Claim-Code': code
+            }
+        })
+    }
 }
 
 const htmlCode = `

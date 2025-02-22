@@ -1,11 +1,14 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
+import { Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
-import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
+import { getMockData, arraysEqualUnordered, checkAuth, getRpc, getRandomNumber } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
 import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
+
+// NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
+const BASE_FEE = "10000";
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
@@ -257,7 +260,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
             // Increase the fee by a random number from 1 through the `BASE_FEE` just to ensure we're not underpaying
             // and because Stellar doesn't seem to like when too many transactions with the same inclusion fee are being submitted
-            fee += Math.floor(Math.random() * Number(BASE_FEE)) + 1;
+            fee += getRandomNumber(1, Number(BASE_FEE));
 
             // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
             fee = fee * 2

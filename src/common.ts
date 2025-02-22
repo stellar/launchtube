@@ -132,8 +132,9 @@ export async function returnAllSequence(env: Env) {
             typeof date === 'boolean'
             || Date.now() - await date.getTime() > 60 * 1000 * 5 // 5 minutes
         ) {
-            const [, s] = key.split(':')
-            await sequencerStub.returnSequence(s)
+            const [p, s] = key.split(':');
+            console.log(`Returning ${p} sequence`);
+            await sequencerStub.returnSequence(s);
         }
     }
 }
