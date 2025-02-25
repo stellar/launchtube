@@ -1,4 +1,4 @@
-import { Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
@@ -8,7 +8,7 @@ import { SequencerDurableObject } from "../sequencer"
 import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
 
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
-const BASE_FEE = "10000";
+const MIN_FEE = "10000";
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
@@ -18,7 +18,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
     let sequencerStub: DurableObjectStub<SequencerDurableObject> | undefined
     let sequenceSecret: string | undefined
 
-    try {
+    // try {
         const formData = await request.formData() as FormData
         const schema = object({
             mock: zenum(['xdr', 'op']).optional(),
@@ -253,9 +253,15 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
                 fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
                 fee = Math.max(fee, Number(BASE_FEE))
-            } catch {
-                console.log('getFeeStats error', rpc.serverURL);
-                fee = Number(BASE_FEE)
+            } catch(err: any) {
+                if (typeof err !== 'string') {
+                    err.rpc = rpc.serverURL.toString()
+                    err.message = `getFeeStats error ${err.rpc}`
+                }
+
+                console.error(err);
+
+                fee = Number(MIN_FEE)
             }
 
             // Increase the fee by a random number from 1 through the `BASE_FEE` just to ensure we're not underpaying
@@ -311,18 +317,25 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             throw err
         }
 
+        if (sequencerStub && sequenceSecret)
+            await sequencerStub.returnSequence(sequenceSecret)
+
         // Refund the bid credits and spend the actual fee credits
         credits = await creditsStub.spendAfter(
             feeBumpTransaction.hash().toString('hex'),
             res.feeCharged,
             bidCredits
         )
-    } finally {
+
+        console.log(res.hash);
+    // }
+    // finally {
         // if this fails we'd lose the sequence keypair. Fine because sequences are derived and thus re-discoverable
         // TODO are we sure this gets called if `sendTransaction` fails?
-        if (sequencerStub && sequenceSecret)
-            await sequencerStub.returnSequence(sequenceSecret)
-    }
+        // yes, we are.
+        // if (sequencerStub && sequenceSecret)
+        //     await sequencerStub.returnSequence(sequenceSecret)
+    // }
 
     return json(res, {
         headers: {

@@ -16,6 +16,7 @@ import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
 import { returnAllSequence } from "./common";
+import { xdr } from "@stellar/stellar-sdk/minimal";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -66,8 +67,35 @@ const handler = {
 		router
 			.fetch(req, env, ctx)
 			.catch((err) => {
-				if (err?.type !== 'simulate')
+				if (err?.type !== 'simulate') {
+					if (typeof err !== 'string') {
+						err.message = err?.message || ''
+						
+						if (err?.status) {
+							err.message += ` ${err.status}`
+						}
+
+						if (err?.errorResult || err?.resultXdr) {
+							const txres = xdr.TransactionResult.fromXDR(err.errorResult || err.resultXdr, 'base64');
+							const result = txres?.result()?.innerResultPair()?.result()?.result();
+							
+							switch (result?.switch()) {
+								case xdr.TransactionResultCode.txFailed():
+									err.message += ' '+ result?.results()?.[0]?.tr()?.invokeHostFunctionResult()?.switch()?.name || ''
+								break;
+								case xdr.TransactionResultCode.txBadSeq():
+									err.message += ' '+ result?.switch()?.name || ''
+								break;
+							}
+						}
+
+						if (err?.rpc) {
+							err.message += ` ${err.rpc}`
+						}
+					}
+					
 					console.error(err);
+				}
 
 				if (err?.rpc)
 					delete err.rpc;

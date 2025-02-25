@@ -17,7 +17,7 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
                 throw {
                     ...(await rpc._simulateTransaction(tx)),
                     type: 'simulate',
-                    rpc: rpc.serverURL,
+                    rpc: rpc.serverURL.toString(),
                     error: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                 }
 
@@ -31,13 +31,18 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 
                 throw {
                     type: 'simulate',
-                    rpc: rpc.serverURL,
+                    rpc: rpc.serverURL.toString(),
                     error,
                     envelopeXdr: tx.toXDR(),
                     events: events.map((event) => event.toXDR('base64')),
                     ...rest,
                 }
             }
+        })
+        .catch((err) => {
+            if (typeof err !== 'string')
+                err.rpc = rpc.serverURL.toString()
+            throw err
         })
 }
 
@@ -52,20 +57,33 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
             else {
                 throw {
                     type: 'send',
-                    rpc: rpc.serverURL,
+                    rpc: rpc.serverURL.toString(),
                     status,
                     hash,
                     envelopeXdr: xdr,
                     errorResult: errorResult?.toXDR('base64'),
                     diagnosticEvents: diagnosticEvents?.map((event) => event.toXDR('base64')),
                     ...rest
-                }   
+                }
             }
+        })
+        .catch((err) => {
+            if (typeof err !== 'string')
+                err.rpc = rpc.serverURL.toString()
+            throw err
         })
 }
 
 async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string, interval = 0) {
-    const result = await rpc.getTransaction(hash)
+    await wait(interval < 3 ? 1000 : 5000) // first 3 seconds, poll every second, then every 5 seconds
+
+    const result = await rpc
+        .getTransaction(hash)
+        .catch((err) => {
+            if (typeof err !== 'string')
+                err.rpc = rpc.serverURL.toString()
+            throw err
+        })
 
     // console.log(interval, result.status);
 
@@ -90,7 +108,7 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
 
         throw {
             type: 'send',
-            rpc: rpc.serverURL,
+            rpc: rpc.serverURL.toString(),
             status,
             hash,
             feeCharged: Number(resultXdr.feeCharged().toBigInt()),
@@ -102,12 +120,12 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
         }
     }
 
-    else if (interval >= 30) {
+    else if (interval > (3 + 6)) { // first 3 seconds then 6 * 5 seconds for a total of 33 seconds polling
         const { status, ...rest } = result
 
         throw {
             type: 'send',
-            rpc: rpc.serverURL,
+            rpc: rpc.serverURL.toString(),
             status,
             hash,
             envelopeXdr: xdr,
@@ -116,7 +134,6 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
     }
 
     interval++
-    await wait()
     return pollTransaction(env, rpc, hash, xdr, interval)
 }
 
