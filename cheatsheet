@@ -6,3 +6,6 @@ wrangler kv:key put b2e101b2e43f12d4ace36f86f3e478b02d62262d0a88b8a7a4b912c40ca2
 
 # Generate keys
 openssl rand -base64 32
+
+# Logs
+# https://dash.cloudflare.com/ba55b7ae9acfb3ed152103e3497c0752/workers/services/view/launchtube-prod/production/observability/logs?time=%7B%22value%22%3A6%2C%22unit%22%3A%22hours%22%2C%22type%22%3A%22relative%22%7D&filters=%5B%7B%22key%22%3A%22%24cloudflare.%24metadata.error%22%2C%22operation%22%3A%22exists%22%2C%22type%22%3A%22string%22%2C%22id%22%3A%22rhcbs3i4icg%22%7D%2C%7B%22id%22%3A%226426%22%2C%22key%22%3A%22%24metadata.message%22%2C%22type%22%3A%22string%22%2C%22value%22%3A%22invokeHostFunctionResourceLimitExceeded%22%2C%22operation%22%3A%22not_includes%22%7D%2C%7B%22id%22%3A%226427%22%2C%22key%22%3A%22%24metadata.message%22%2C%22type%22%3A%22string%22%2C%22value%22%3A%22retry+in+10s%22%2C%22operation%22%3A%22not_includes%22%7D%2C%7B%22id%22%3A%226428%22%2C%22key%22%3A%22%24metadata.message%22%2C%22type%22%3A%22string%22%2C%22value%22%3A%22code+was+updated%22%2C%22operation%22%3A%22not_includes%22%7D%2C%7B%22id%22%3A%222150%22%2C%22key%22%3A%22%24metadata.message%22%2C%22type%22%3A%22string%22%2C%22value%22%3A%22invokeHostFunctionTrapped%22%2C%22operation%22%3A%22not_includes%22%7D%5D&needle=%7B%22value%22%3A%22%22%2C%22isRegex%22%3Afalse%2C%22matchCase%22%3Afalse%7D
