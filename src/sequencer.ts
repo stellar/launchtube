@@ -1,12 +1,9 @@
 import { Keypair, Operation, StrKey, Transaction, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
 import { DurableObject } from "cloudflare:workers";
 import { sendTransaction } from "./common";
-import { addUniqItemsToArray, getRpc, wait } from "./helpers";
+import { getRpc } from "./helpers";
 
 export class SequencerDurableObject extends DurableObject<Env> {
-    private ready: boolean = true
-    private queue: string[] = []
-
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
     }
@@ -19,14 +16,16 @@ export class SequencerDurableObject extends DurableObject<Env> {
         // TODO need to return the dates as well, the values
 
         return {
-            ready: this.ready,
-            queue: this.queue,
             index,
             poolCount: pool.size,
             fieldCount: field.size,
             pool,
             field,
         }
+    }
+    public async fullFlush() {
+        await this.ctx.storage.deleteAll()
+        await this.ctx.storage.deleteAlarm()
     }
     public async getSequence(): Promise<string> {
         // I need to test if it's possible to get the first item in the list more than once in times of concurrent requests
@@ -53,64 +52,9 @@ export class SequencerDurableObject extends DurableObject<Env> {
         await this.ctx.storage.put(`pool:${sequence}`, new Date())
     }
 
-    // e.g. scenario
-    // 100 requests for new sequences comes in
-    // All are queued up and begin to wait
-    // Once the fund account is ready the first 25 are taken from the queue
-    // A transaction is created to create the accounts and submitted
-    // In case of success or failure we need to communicate that back to the 25 pending requests
-    // Repeat taking the next batch of queued sequences 
-
-    public async queueSequences(count: number) {
-        let i = 0
-
-        while (i < count) {
-            await this.queueSequence()
-            i++
-        }
-
-        return this.pollSequence()
-    }
-    private async queueSequence() {
-        if (this.queue.length >= 25)
-            throw 'Too many sequences queued. Please try again later'
-
-        const index = await this.ctx.storage.get<number>('index') || 0
-        const indexBuffer = Buffer.alloc(4);
-
-        indexBuffer.writeUInt32BE(index);
-
-        // Seed new sequences in a reproducible way so we can always recreate them to recoup "lost" accounts
-        const sequenceBuffer = Buffer.concat([
-            StrKey.decodeEd25519SecretSeed(this.env.FUND_SK),
-            indexBuffer
-        ])
-        const sequenceSeed = await crypto.subtle.digest({ name: 'SHA-256' }, sequenceBuffer);
-        const sequenceKeypair = Keypair.fromRawEd25519Seed(Buffer.from(sequenceSeed))
-        const sequenceSecret = sequenceKeypair.secret()
-
-        this.queue = addUniqItemsToArray(this.queue, sequenceSecret)
-
-        await this.ctx.storage.put('index', index + 1)
-    }
-    private async pollSequence(interval = 0): Promise<void> {
-        if (this.ready) {
-            if (interval >= 30)
-                throw 'Sequencer transaction timed out. Please try again'
-            else if (this.queue.length >= 1)
-                this.createSequences(this.queue.splice(0, 25))
-            else 
-                return
-        }
-
-        interval++
-        await wait()
-        return this.pollSequence(interval)
-    }
-    private async createSequences(queue: string[]) {
+    public async createSequences(count: number) {
         try {
-            this.ready = false
-
+            const queue: string[] = []
             const fundKeypair = Keypair.fromSecret(this.env.FUND_SK)
             const fundPubkey = fundKeypair.publicKey()
             const fundSource = await getRpc(this.env).getAccount(fundPubkey)
@@ -120,10 +64,28 @@ export class SequencerDurableObject extends DurableObject<Env> {
                 networkPassphrase: this.env.NETWORK_PASSPHRASE,
             })
 
-            for (const sequence of queue) {
+            for (let i = 0; i < count; i++) {
+                const index = await this.ctx.storage.get<number>('index') || 0
+                const indexBuffer = Buffer.alloc(4);
+
+                indexBuffer.writeUInt32BE(index);
+
+                // Seed new sequences in a reproducible way so we can always recreate them to recoup "lost" accounts
+                const sequenceBuffer = Buffer.concat([
+                    StrKey.decodeEd25519SecretSeed(this.env.FUND_SK),
+                    indexBuffer
+                ])
+                const sequenceSeed = await crypto.subtle.digest({ name: 'SHA-256' }, sequenceBuffer);
+                const sequenceKeypair = Keypair.fromRawEd25519Seed(Buffer.from(sequenceSeed))
+                const sequenceSecret = sequenceKeypair.secret()
+
+                queue.push(sequenceSecret)
+
+                await this.ctx.storage.put('index', index + 1)
+
                 transaction
                     .addOperation(Operation.createAccount({
-                        destination: Keypair.fromSecret(sequence).publicKey(),
+                        destination: sequenceKeypair.publicKey(),
                         startingBalance: '1'
                     }))
             }
@@ -134,17 +96,20 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             transaction.sign(fundKeypair)
 
-            await sendTransaction(this.env, transaction)
+            const send_res = await sendTransaction(this.env, transaction)
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {
                 this.ctx.storage.put(`pool:${sequenceSecret}`, new Date())
             }
+
+            return send_res;
         } catch (err: any) {
+            // TODO seem to be getting some odd TRY_AGAIN_LATER errors here
+            // Occasionally it'll work though. Idk why.
+
             console.error(err);
-            await wait(5000);
-        } finally {
-            this.ready = true
+            throw err
         }
     }
 }

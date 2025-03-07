@@ -314,10 +314,10 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             credits = await creditsStub.spendBefore(err.feeCharged, bidCredits)
 
         throw err
+    } finally {
+        if (sequencerStub && sequenceSecret)
+            await sequencerStub.returnSequence(sequenceSecret)
     }
-
-    if (sequencerStub && sequenceSecret)
-        await sequencerStub.returnSequence(sequenceSecret)
 
     // Refund the bid credits and spend the actual fee credits
     credits = await creditsStub.spendAfter(

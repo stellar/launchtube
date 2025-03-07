@@ -7,7 +7,7 @@ import { checkSudoAuth } from "../helpers";
 export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     await checkSudoAuth(request, env)
 
-    const { return: rtrn, delete: dlte, shh } = request.query
+    const { return: rtrn, delete: dlte, flush, shh } = request.query
 
     const sequencerId = env.SEQUENCER_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
     const sequencerStub = env.SEQUENCER_DURABLE_OBJECT.get(sequencerId) as DurableObjectStub<SequencerDurableObject>;
@@ -35,6 +35,11 @@ export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: Exe
 
     else if (dlte) {
         await sequencerStub.deleteSequence(dlte)
+        rawData = await sequencerStub.getData()
+    }
+
+    else if (flush) {
+        await sequencerStub.fullFlush()
         rawData = await sequencerStub.getData()
     }
 
@@ -66,8 +71,6 @@ export async function apiSequencerInfo(request: RequestLike, env: Env, _ctx: Exe
 
     // Private endpoint, but still, don't leak secrets
     const cleanData = {
-        ready: rawData.ready,
-        queue: rawData.queue.map((key: string) => Keypair.fromSecret(key).publicKey()),
         index: rawData.index,
         poolCount: rawData.poolCount,
         fieldCount: rawData.fieldCount,

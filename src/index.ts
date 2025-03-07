@@ -8,7 +8,7 @@ import { apiTokenDelete } from "./api/token-delete";
 import { apiTokensGenerate } from "./api/tokens-generate";
 import { apiSql } from "./api/sql";
 import { apiTokenActivate } from "./api/token-activate";
-import { apiSequencerQueue } from "./api/sequencer-queue";
+import { apiSequencerCreate } from "./api/sequencer-create";
 import { htmlTermsAndConditions } from "./html/terms-and-conditions";
 import { htmlActivate } from "./html/activate";
 import { apiQrCode } from "./api/qrcode";
@@ -16,7 +16,7 @@ import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
 import { returnAllSequence } from "./common";
-import { xdr } from "@stellar/stellar-sdk/minimal";
+import { Account, Address, Keypair, StrKey, xdr } from "@stellar/stellar-sdk/minimal";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -57,7 +57,7 @@ router
 	.get('/gen', apiTokensGenerate)
 	.delete('/:sub', apiTokenDelete)
 	.get('/seq', apiSequencerInfo)
-	.post('/seq', apiSequencerQueue)
+	.post('/seq', apiSequencerCreate)
 	.post('/sql', apiSql)
 	// ---
 	.all('*', () => error(404))
@@ -66,11 +66,11 @@ const handler = {
 	fetch: (req: Request, env: Env, ctx: ExecutionContext) =>
 		router
 			.fetch(req, env, ctx)
-			.catch((err) => {
+			.catch(async (err) => {
 				if (err?.type !== 'simulate') {
 					if (typeof err !== 'string') {
 						err.message = err?.message || ''
-						
+
 						if (err?.status) {
 							err.message += ` ${err.status}`
 						}
@@ -78,28 +78,61 @@ const handler = {
 						if (err?.errorResult || err?.resultXdr) {
 							const txres = xdr.TransactionResult.fromXDR(err.errorResult || err.resultXdr, 'base64');
 							const result = txres?.result()?.innerResultPair()?.result()?.result();
-							
+
 							switch (result?.switch()) {
 								case xdr.TransactionResultCode.txFailed():
-									err.message += ' '+ result?.results()?.[0]?.tr()?.invokeHostFunctionResult()?.switch()?.name || ''
-								break;
+									err.message += ' ' + result?.results()?.[0]?.tr()?.invokeHostFunctionResult()?.switch()?.name || ''
+									break;
 								case xdr.TransactionResultCode.txBadSeq():
-									err.message += ' '+ result?.switch()?.name || ''
-								break;
+									const name = result?.switch()?.name || '';
+									const tx = xdr.TransactionEnvelope.fromXDR(err.envelopeXdr, 'base64');
+
+									// TEST if the error is a sequence error check if the source account is one of our sequence accounts
+									if (name === 'txBadSeq') {
+										const source = await new Promise<string>((resolve) => {
+											let source: Buffer | undefined;
+
+											try {
+												source = tx.v0().tx().sourceAccountEd25519()
+											} catch {
+												try {
+													source = tx.v1().tx().sourceAccount().ed25519()
+												} catch {
+													try {
+														source = tx.feeBump().tx().innerTx().v1().tx().sourceAccount().ed25519()
+													} catch {}
+												}
+											}
+
+											if (source) {
+												resolve(StrKey.encodeEd25519PublicKey(source))
+											} else {
+												resolve('')
+											}
+										})
+
+										err.message += ` ${name} ${source}`
+									} else {
+										err.message += ` ${name}`
+									}
+									break;
 							}
 						}
 
-						if (err?.rpc) {
-							err.message += ` ${err.rpc}`
-						}
+						// NOTE if we include this in the message it will show up in the response
+						// if (err?.rpc) {
+						// 	err.message += ` ${err.rpc}`
+						// }
+
+						err.message = err.message.trim()
 					}
-					
+
 					console.error(err);
 				}
 
 				if (err?.rpc)
 					delete err.rpc;
-				
+
 				return error(
 					typeof err?.status === 'number' ? err.status : 400,
 					err instanceof ZodError
