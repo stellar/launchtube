@@ -1,4 +1,4 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal";
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk/minimal";
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
@@ -8,7 +8,7 @@ import { SequencerDurableObject } from "../sequencer"
 import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
 
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
-const MIN_FEE = "10000";
+const MIN_FEE = "100000";
 
 export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
@@ -84,7 +84,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         isMock ? await getMockData(env, formData) : {},
         schema.parse(Object.fromEntries(formData))
     )
-    
+
     const creditsId = env.CREDITS_DURABLE_OBJECT.idFromString(payload.sub!)
     const creditsStub = env.CREDITS_DURABLE_OBJECT.get(creditsId) as DurableObjectStub<CreditsDurableObject>;
 
@@ -139,7 +139,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
     for (const a of auth || []) {
         switch (a.credentials().switch()) {
             case xdr.SorobanCredentialsType.sorobanCredentialsSourceAccount():
-                // If we're simulating using we must error on `sorobanCredentialsSourceAccount`
+                // If we're simulating we must error on `sorobanCredentialsSourceAccount`
                 // This is due to simulation rebuilding the transaction. Any borrowed signature is incredibly unlikely to succeed
                 if (sim) {
                     sim = false
@@ -174,6 +174,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
     if (sim) {
         const invokeContract = func.invokeContract()
         const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
+        const function_name = invokeContract.functionName().toString()
         const sequenceSource = await getRpc(env).getAccount(sequencePubkey)
 
         let transaction_builder: TransactionBuilder = new TransactionBuilder(sequenceSource, {
@@ -192,7 +193,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         })
             .addOperation(Operation.invokeContractFunction({
                 contract,
-                function: invokeContract.functionName().toString(),
+                function: function_name,
                 args: invokeContract.args(),
                 auth,
                 source: op?.source
@@ -212,8 +213,54 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             result?.auth.map((a) => a.toXDR('base64')) || []
         )) throw 'Auth invalid'
 
+        // TODO 
+        // if contract is KALE
+        // if function is plant
+        // if read footprint is missing Block
+        if (
+            contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
+            && function_name === 'plant'
+        ) {
+            let read_block_index = 0
+            let is_new_block = false
+            const resources = transactionData.build().resources()
+
+            for (let entry of resources.footprint().readOnly()) {
+                try {
+                    const key = scValToNative(entry.contractData().key())
+
+                    if (key?.[0] === 'Block') {
+                        read_block_index = key[1];
+                        break;
+                    }
+                } catch { }
+            }
+
+            for (let entry of resources.footprint().readWrite()) {
+                try {
+                    const key = scValToNative(entry.contractData().key())
+
+                    if (
+                        key?.[0] === 'Block'
+                        && key[1] !== read_block_index
+                    ) {
+                        is_new_block = true;
+                        break;
+                    }
+                } catch { }
+            }
+
+            if (is_new_block) {
+                transactionData.setResources(
+                    resources.instructions(),
+                    resources.readBytes() + 460,
+                    resources.writeBytes()
+                )
+            }
+        }
+
         const sorobanData = transactionData.build()
-        
+
         resourceFee = sorobanData.resourceFee()
         transaction = TransactionBuilder
             .cloneFrom(transaction, {
@@ -228,8 +275,12 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
     else if (tx) {
         switch (tx.toEnvelope().switch()) {
             case xdr.EnvelopeType.envelopeTypeTx():
+                // TODO gut check sim?? Just to ensure we're not about to submit something that will _definitely_ fail
+                // Didn't seem the help anything when I tried
+                // await simulateTransaction(env, tx);
+
                 const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
-                
+
                 resourceFee = sorobanData.resourceFee()
                 transaction = tx
 
@@ -252,7 +303,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
 
             fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
             fee = Math.max(fee, Number(BASE_FEE))
-        } catch(err: any) {
+        } catch (err: any) {
             if (typeof err !== 'string') {
                 err.rpc = rpc.serverURL.toString()
                 err.message = `getFeeStats error ${err.rpc}`
@@ -313,7 +364,11 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         if (err?.feeCharged)
             credits = await creditsStub.spendBefore(err.feeCharged, bidCredits)
 
-        throw err
+        throw {
+            ...err,
+            sim,
+            sub: payload.sub,
+        }
     } finally {
         if (sequencerStub && sequenceSecret)
             await sequencerStub.returnSequence(sequenceSecret)
@@ -326,7 +381,10 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         bidCredits
     )
 
-    console.log(res.hash);
+    console.log({
+        ...res,
+        clientName: request.headers.get('X-Client-Name') || request.headers.get('x-client-name') || 'Unknown',
+    });
 
     return json(res, {
         headers: {

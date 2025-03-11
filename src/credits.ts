@@ -35,8 +35,10 @@ export class CreditsDurableObject extends DurableObject<Env> {
 
 		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + refund
 
-		if (existing_credits <= 0)
+		if (existing_credits <= 0) {
+			// this.ctx.waitUntil(this.delete())
 			throw 'No credits left'
+		}
 
 		const now_credits = existing_credits - spend
 
@@ -52,8 +54,10 @@ export class CreditsDurableObject extends DurableObject<Env> {
 
 		const existing_credits = (await this.ctx.storage.get<number>('credits') || 0) + refund
 
-		if (existing_credits <= 0)
+		if (existing_credits <= 0) {
+			// this.ctx.waitUntil(this.delete())
 			throw 'No credits left'
+		}
 
 		// Since this method is called after a successful tx send I'm fine not throwing if (now_credits < 0)
 		const now_credits = existing_credits - spend

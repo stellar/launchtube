@@ -55,11 +55,16 @@ export class SequencerDurableObject extends DurableObject<Env> {
     public async createSequences(count: number) {
         try {
             const queue: string[] = []
+
             const fundKeypair = Keypair.fromSecret(this.env.FUND_SK)
             const fundPubkey = fundKeypair.publicKey()
-            const fundSource = await getRpc(this.env).getAccount(fundPubkey)
 
-            let transaction: TransactionBuilder | Transaction = new TransactionBuilder(fundSource, {
+            const sequenceSecret = await this.getSequence()
+            const sequenceKeypair = Keypair.fromSecret(sequenceSecret)
+            const sequencePubkey = sequenceKeypair.publicKey()
+            const sequenceSource = await getRpc(this.env).getAccount(sequencePubkey)
+
+            let transaction: TransactionBuilder | Transaction = new TransactionBuilder(sequenceSource, {
                 fee: (100_000).toString(),
                 networkPassphrase: this.env.NETWORK_PASSPHRASE,
             })
@@ -86,17 +91,27 @@ export class SequencerDurableObject extends DurableObject<Env> {
                 transaction
                     .addOperation(Operation.createAccount({
                         destination: sequenceKeypair.publicKey(),
-                        startingBalance: '1'
+                        startingBalance: '1',
+                        source: fundPubkey
                     }))
             }
 
             transaction = transaction
-                .setTimeout(60)
+                .setTimeout(30)
                 .build()
 
-            transaction.sign(fundKeypair)
+            transaction.sign(sequenceKeypair, fundKeypair)
 
-            const send_res = await sendTransaction(this.env, transaction)
+            const feeBumpTransaction = TransactionBuilder.buildFeeBumpTransaction(
+                fundKeypair,
+                transaction.fee,
+                transaction,
+                this.env.NETWORK_PASSPHRASE
+            )
+        
+            feeBumpTransaction.sign(fundKeypair)
+
+            const send_res = await sendTransaction(this.env, feeBumpTransaction)
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {

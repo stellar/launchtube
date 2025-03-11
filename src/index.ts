@@ -16,7 +16,8 @@ import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
 import { returnAllSequence } from "./common";
-import { Account, Address, Keypair, StrKey, xdr } from "@stellar/stellar-sdk/minimal";
+import { StrKey, xdr } from "@stellar/stellar-sdk/minimal";
+import { apiTokenGet } from "./api/token-get";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -55,6 +56,7 @@ router
 	// Private endpoints
 	.get('/qrcode', apiQrCode)
 	.get('/gen', apiTokensGenerate)
+	.get('/:sub', apiTokenGet)
 	.delete('/:sub', apiTokenDelete)
 	.get('/seq', apiSequencerInfo)
 	.post('/seq', apiSequencerCreate)
@@ -69,10 +71,10 @@ const handler = {
 			.catch(async (err) => {
 				if (err?.type !== 'simulate') {
 					if (typeof err !== 'string') {
-						err.message = err?.message || ''
+						let message = err?.message || ''
 
 						if (err?.status) {
-							err.message += ` ${err.status}`
+							message += ` ${err.status}`
 						}
 
 						if (err?.errorResult || err?.resultXdr) {
@@ -81,7 +83,7 @@ const handler = {
 
 							switch (result?.switch()) {
 								case xdr.TransactionResultCode.txFailed():
-									err.message += ' ' + result?.results()?.[0]?.tr()?.invokeHostFunctionResult()?.switch()?.name || ''
+									message += ' ' + result?.results()?.[0]?.tr()?.invokeHostFunctionResult()?.switch()?.name || ''
 									break;
 								case xdr.TransactionResultCode.txBadSeq():
 									const name = result?.switch()?.name || '';
@@ -100,7 +102,7 @@ const handler = {
 												} catch {
 													try {
 														source = tx.feeBump().tx().innerTx().v1().tx().sourceAccount().ed25519()
-													} catch {}
+													} catch { }
 												}
 											}
 
@@ -111,27 +113,36 @@ const handler = {
 											}
 										})
 
-										err.message += ` ${name} ${source}`
+										message += ` ${name} ${source}`
 									} else {
-										err.message += ` ${name}`
+										message += ` ${name}`
 									}
 									break;
 							}
 						}
 
-						// NOTE if we include this in the message it will show up in the response
-						// if (err?.rpc) {
-						// 	err.message += ` ${err.rpc}`
-						// }
+						if (err?.rpc) {
+							message += ` ${err.rpc}`
+						}
 
-						err.message = err.message.trim()
+						message = message.trim()
+
+						console.error({
+							...err,
+							message,
+							clientName: req.headers.get('X-Client-Name') || req.headers.get('x-client-name') || 'Unknown',
+						});
+					} else {
+						console.error(err);
 					}
-
-					console.error(err);
 				}
 
 				if (err?.rpc)
 					delete err.rpc;
+				if (err?.sim)
+					delete err.sim;
+				if (err?.sub)
+					delete err.sub;
 
 				return error(
 					typeof err?.status === 'number' ? err.status : 400,

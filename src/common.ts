@@ -15,10 +15,9 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
             // TODO support Restore scenarios
             if (Api.isSimulationRestore(res))
                 throw {
+                    message: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                     ...(await rpc._simulateTransaction(tx)),
                     type: 'simulate',
-                    rpc: rpc.serverURL.toString(),
-                    error: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                 }
 
             else if (Api.isSimulationSuccess(res))
@@ -31,18 +30,12 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 
                 throw {
                     type: 'simulate',
-                    rpc: rpc.serverURL.toString(),
                     error,
                     envelopeXdr: tx.toXDR(),
                     events: events.map((event) => event.toXDR('base64')),
                     ...rest,
                 }
             }
-        })
-        .catch((err) => {
-            if (typeof err !== 'string')
-                err.rpc = rpc.serverURL.toString()
-            throw err
         })
 }
 
@@ -53,7 +46,7 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
     return rpc.sendTransaction(tx)
         .then(({ status, hash, errorResult, diagnosticEvents, ...rest }) => {
             if (status === 'PENDING')
-                return pollTransaction(env, rpc, hash, xdr)
+                return pollTransaction(env, hash, xdr)
             else {
                 throw {
                     type: 'send',
@@ -69,19 +62,20 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         })
         .catch((err) => {
             if (typeof err !== 'string')
-                err.rpc = rpc.serverURL.toString()
+                err.rpc = err?.rpc || rpc.serverURL.toString()
             throw err
         })
 }
 
-async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string, interval = 0) {
+async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0) {
     await wait(interval < 3 ? 1000 : 5000) // first 3 seconds, poll every second, then every 5 seconds
 
+    const rpc = getRpc(env)
     const result = await rpc
         .getTransaction(hash)
         .catch((err) => {
             if (typeof err !== 'string')
-                err.rpc = rpc.serverURL.toString()
+                err.rpc = err?.rpc || rpc.serverURL.toString()
             throw err
         })
 
@@ -134,7 +128,7 @@ async function pollTransaction(env: Env, rpc: Server, hash: string, xdr: string,
     }
 
     interval++
-    return pollTransaction(env, rpc, hash, xdr, interval)
+    return pollTransaction(env, hash, xdr, interval)
 }
 
 export async function returnAllSequence(env: Env) {
