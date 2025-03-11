@@ -213,10 +213,11 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             result?.auth.map((a) => a.toXDR('base64')) || []
         )) throw 'Auth invalid'
 
-        // TODO 
+        // HOTFIX for `invokeHostFunctionResourceLimitExceeded`
         // if contract is KALE
         // if function is plant
         // if read footprint is missing Block
+        // if write footprint has block and it's index is different from the read block index
         if (
             contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
             && function_name === 'plant'

@@ -56,11 +56,11 @@ router
 	// Private endpoints
 	.get('/qrcode', apiQrCode)
 	.get('/gen', apiTokensGenerate)
-	.get('/:sub', apiTokenGet)
-	.delete('/:sub', apiTokenDelete)
 	.get('/seq', apiSequencerInfo)
 	.post('/seq', apiSequencerCreate)
 	.post('/sql', apiSql)
+	.get('/:sub', apiTokenGet)
+	.delete('/:sub', apiTokenDelete)
 	// ---
 	.all('*', () => error(404))
 
