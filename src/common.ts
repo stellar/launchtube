@@ -1,7 +1,7 @@
 import { Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
 import { getRpc, wait } from "./helpers";
 import { SequencerDurableObject } from "./sequencer";
-import { Api, Server } from "@stellar/stellar-sdk/rpc";
+import { Api } from "@stellar/stellar-sdk/rpc";
 
 export const MAX_U32 = 2 ** 32 - 1
 export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
@@ -51,8 +51,8 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
 }
 
 export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
-    const rpc = getRpc(env)
     const xdr = tx.toXDR()
+    const rpc = getRpc(env)
 
     return rpc.sendTransaction(tx)
         .then(({ status, hash, errorResult, diagnosticEvents, ...rest }) => {
@@ -80,8 +80,9 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         })
 }
 
-async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0) {
-    await wait(interval < 3 ? 1000 : 5000) // first 3 seconds, poll every second, then every 5 seconds
+async function pollTransaction(env: Env, hash: string, xdr: string, interval = 1) {
+    await wait(interval * 1000); // exponential backoff
+    interval *= 2;
 
     const rpc = getRpc(env)
     const result = await rpc
@@ -93,8 +94,6 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0
 
             throw err
         })
-
-    // console.log(interval, result.status);
 
     if (result.status === 'SUCCESS') {
         const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, returnValue, ...rest } = result
@@ -129,7 +128,7 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0
         }
     }
 
-    else if (interval > (3 + 6)) { // first 3 seconds then 6 * 5 seconds for a total of 33 seconds polling
+    else if (interval > 16) { // 1+2+4+8+16 = 31 seconds total wait time
         const { status, ...rest } = result
 
         throw {
@@ -142,7 +141,6 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0
         }
     }
 
-    interval++
     return pollTransaction(env, hash, xdr, interval)
 }
 
