@@ -15,8 +15,8 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
             // TODO support Restore scenarios
             if (Api.isSimulationRestore(res))
                 throw {
-                    message: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                     ...(await rpc._simulateTransaction(tx)),
+                    message: 'Restore flow not yet supported. Please report this issue with this response. https://github.com/stellar/launchtube/issues',
                     type: 'simulate',
                 }
 
@@ -29,13 +29,24 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
                 delete (rest as { _parsed?: boolean })._parsed;
 
                 throw {
+                    ...rest,
                     type: 'simulate',
                     error,
                     envelopeXdr: tx.toXDR(),
                     events: events.map((event) => event.toXDR('base64')),
-                    ...rest,
                 }
             }
+        })
+        .catch((err) => {
+            if (typeof err !== 'string') {
+                err = {
+                    ...err,
+                    type: 'simulate',
+                    rpc: rpc.serverURL.toString()
+                }
+            }
+
+            throw err
         })
 }
 
@@ -61,8 +72,10 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
             }
         })
         .catch((err) => {
-            if (typeof err !== 'string')
+            if (typeof err !== 'string') {
                 err.rpc = err?.rpc || rpc.serverURL.toString()
+            }
+
             throw err
         })
 }
@@ -74,8 +87,10 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 0
     const result = await rpc
         .getTransaction(hash)
         .catch((err) => {
-            if (typeof err !== 'string')
+            if (typeof err !== 'string') {
                 err.rpc = err?.rpc || rpc.serverURL.toString()
+            }
+
             throw err
         })
 
