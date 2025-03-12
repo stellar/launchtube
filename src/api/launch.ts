@@ -1,11 +1,10 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk/minimal";
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk/minimal"
 import { RequestLike, json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
 import { getMockData, arraysEqualUnordered, checkAuth, getRpc, getRandomNumber } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
-import { DEFAULT_TIMEOUT } from "@stellar/stellar-sdk/minimal/contract";
 
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
 const MIN_FEE = "100000";
@@ -176,16 +175,17 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
         const function_name = invokeContract.functionName().toString()
         const sequenceSource = await getRpc(env).getAccount(sequencePubkey)
+        const now = Math.floor(Date.now() / 1000)
 
-        let transaction_builder: TransactionBuilder = new TransactionBuilder(sequenceSource, {
+        transaction = new TransactionBuilder(sequenceSource, {
             fee: '0',
             networkPassphrase: env.NETWORK_PASSPHRASE,
+            ledgerbounds: tx?.ledgerBounds,
             timebounds: tx?.timeBounds || {
-                minTime: 0,
-                maxTime: Math.floor(Date.now() / 1000) + DEFAULT_TIMEOUT
+                minTime: now,
+                maxTime: now + 30 // 30 seconds
             },
             memo: tx?.memo,
-            ledgerbounds: tx?.ledgerBounds,
             minAccountSequence: tx?.minAccountSequence,
             minAccountSequenceAge: tx?.minAccountSequenceAge,
             minAccountSequenceLedgerGap: tx?.minAccountSequenceLedgerGap,
@@ -198,8 +198,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 auth,
                 source: op?.source
             }))
-
-        transaction = transaction_builder.build()
+        .build()
 
         const { result, transactionData } = await simulateTransaction(env, transaction)
 
