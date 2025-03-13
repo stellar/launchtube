@@ -9,7 +9,7 @@ import { SequencerDurableObject } from "../sequencer"
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
 const MIN_FEE = "100000";
 
-export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionContext) {
+export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
 
     let res: any
@@ -174,7 +174,19 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
         const invokeContract = func.invokeContract()
         const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
         const function_name = invokeContract.functionName().toString()
-        const sequenceSource = await getRpc(env).getAccount(sequencePubkey)
+        const rpc = getRpc(env)
+        const sequenceSource = await rpc
+            .getAccount(sequencePubkey)
+            .catch((err) => {
+                if (typeof err !== 'string') {
+                    err = {
+                        ...err,
+                        rpc: rpc.serverURL.toString()
+                    }
+                }
+
+                throw err
+            })
         const now = Math.floor(Date.now() / 1000)
 
         transaction = new TransactionBuilder(sequenceSource, {
@@ -183,7 +195,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             ledgerbounds: tx?.ledgerBounds,
             timebounds: tx?.timeBounds || {
                 minTime: now,
-                maxTime: now + 30 // 30 seconds
+                maxTime: now + 60 // 1 minute
             },
             memo: tx?.memo,
             minAccountSequence: tx?.minAccountSequence,
@@ -198,7 +210,7 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
                 auth,
                 source: op?.source
             }))
-        .build()
+            .build()
 
         const { result, transactionData } = await simulateTransaction(env, transaction)
 
@@ -221,41 +233,49 @@ export async function apiLaunch(request: RequestLike, env: Env, _ctx: ExecutionC
             contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
             && function_name === 'plant'
         ) {
-            let read_block_index = 0
-            let is_new_block = false
-            const resources = transactionData.build().resources()
+            // let read_block_index = 0
+            // let is_new_block = false
+            // const resources = transactionData.build().resources()
 
-            for (let entry of resources.footprint().readOnly()) {
-                try {
-                    const key = scValToNative(entry.contractData().key())
+            // for (let entry of resources.footprint().readOnly()) {
+            //     try {
+            //         const key = scValToNative(entry.contractData().key())
 
-                    if (key?.[0] === 'Block') {
-                        read_block_index = key[1];
-                        break;
-                    }
-                } catch { }
-            }
+            //         if (key?.[0] === 'Block') {
+            //             read_block_index = key[1];
+            //             break;
+            //         }
+            //     } catch { }
+            // }
 
-            for (let entry of resources.footprint().readWrite()) {
-                try {
-                    const key = scValToNative(entry.contractData().key())
+            // for (let entry of resources.footprint().readWrite()) {
+            //     try {
+            //         const key = scValToNative(entry.contractData().key())
 
-                    if (
-                        key?.[0] === 'Block'
-                        && key[1] !== read_block_index
-                    ) {
-                        is_new_block = true;
-                        break;
-                    }
-                } catch { }
-            }
+            //         if (
+            //             key?.[0] === 'Block'
+            //             && key[1] !== read_block_index
+            //         ) {
+            //             is_new_block = true;
+            //             break;
+            //         }
+            //     } catch { }
+            // }
 
-            if (is_new_block) {
-                transactionData.setResources(
-                    resources.instructions(),
-                    resources.readBytes() + 460,
-                    resources.writeBytes()
-                )
+            // if (is_new_block) {
+            //     transactionData.setResources(
+            //         resources.instructions(),
+            //         resources.readBytes() + 460,
+            //         resources.writeBytes()
+            //     )
+            // }
+
+            if (
+                env.ENV === 'production'
+                && !request.headers.get('X-Client-Name')
+                && !request.headers.get('x-client-name')
+            ) {
+                throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
             }
         }
 

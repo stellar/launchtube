@@ -80,7 +80,7 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         })
 }
 
-async function pollTransaction(env: Env, hash: string, xdr: string, interval = 1) {
+async function pollTransaction(env: Env, hash: string, xdr: string, interval = 2) {
     await wait(interval * 1000); // exponential backoff
     interval *= 2;
 
@@ -128,7 +128,7 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 1
         }
     }
 
-    else if (interval > 16) { // 1+2+4+8+16 = 31 seconds total wait time
+    else if (interval > 32) { // 2+4+8+16+32 = 62 seconds
         const { status, ...rest } = result
 
         throw {
