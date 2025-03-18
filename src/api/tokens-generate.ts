@@ -5,7 +5,7 @@ import { sign } from "@tsndr/cloudflare-worker-jwt";
 import { checkSudoAuth } from "../helpers";
 
 export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    let ttl, credits, count, init = false;
+    let ttl, credits, count, init;
 
     if (env.ENV === 'development') {
         ttl = 7_257_600 // 12 weeks (3 months)
@@ -18,7 +18,10 @@ export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: Ex
             ttl: preprocess(Number, number()),
             xlm: preprocess(Number, number().gte(1).lte(10_000)),
             count: preprocess(Number, number().gte(1).lte(100)),
-            init: preprocess(Boolean, boolean()).optional().default(false)
+            init: preprocess(
+                (val) => val ? val === 'true' : false,
+                boolean().optional()
+            ),
         }).parse(request.query)
     
         ttl = body.ttl
