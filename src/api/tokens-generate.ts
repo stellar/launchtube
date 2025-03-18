@@ -1,11 +1,11 @@
 import { RequestLike, json } from "itty-router";
-import { object, preprocess, number } from "zod";
+import { object, preprocess, number, boolean } from "zod";
 import { CreditsDurableObject } from "../credits";
 import { sign } from "@tsndr/cloudflare-worker-jwt";
 import { checkSudoAuth } from "../helpers";
 
 export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: ExecutionContext) {
-    let ttl, credits, count;
+    let ttl, credits, count, init = false;
 
     if (env.ENV === 'development') {
         ttl = 7_257_600 // 12 weeks (3 months)
@@ -18,11 +18,13 @@ export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: Ex
             ttl: preprocess(Number, number()),
             xlm: preprocess(Number, number().gte(1).lte(10_000)),
             count: preprocess(Number, number().gte(1).lte(100)),
+            init: preprocess(Boolean, boolean()).optional().default(false)
         }).parse(request.query)
     
         ttl = body.ttl
         credits = body.xlm * 10_000_000
         count = body.count
+        init = body.init
     }
 
     const tokens = []
@@ -36,7 +38,7 @@ export async function apiTokensGenerate(request: RequestLike, env: Env, _ctx: Ex
             credits,
         }, env.JWT_SECRET)
 
-        await stub.init(ttl, credits);
+        await stub.init(ttl, credits, init);
 
         tokens.push(token)
     }

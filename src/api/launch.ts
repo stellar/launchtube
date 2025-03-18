@@ -1,5 +1,5 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk/minimal"
-import { RequestLike, json } from "itty-router"
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal"
+import { json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
@@ -224,52 +224,11 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             result?.auth.map((a) => a.toXDR('base64')) || []
         )) throw 'Auth invalid'
 
-        // HOTFIX for `invokeHostFunctionResourceLimitExceeded`
-        // if contract is KALE
-        // if function is plant
-        // if read footprint is missing Block
-        // if write footprint has block and it's index is different from the read block index
+        // HOTFIX(s) for KALE `plant`
         if (
             contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
             && function_name === 'plant'
         ) {
-            // let read_block_index = 0
-            // let is_new_block = false
-            // const resources = transactionData.build().resources()
-
-            // for (let entry of resources.footprint().readOnly()) {
-            //     try {
-            //         const key = scValToNative(entry.contractData().key())
-
-            //         if (key?.[0] === 'Block') {
-            //             read_block_index = key[1];
-            //             break;
-            //         }
-            //     } catch { }
-            // }
-
-            // for (let entry of resources.footprint().readWrite()) {
-            //     try {
-            //         const key = scValToNative(entry.contractData().key())
-
-            //         if (
-            //             key?.[0] === 'Block'
-            //             && key[1] !== read_block_index
-            //         ) {
-            //             is_new_block = true;
-            //             break;
-            //         }
-            //     } catch { }
-            // }
-
-            // if (is_new_block) {
-            //     transactionData.setResources(
-            //         resources.instructions(),
-            //         resources.readBytes() + 460,
-            //         resources.writeBytes()
-            //     )
-            // }
-
             if (
                 env.ENV === 'production'
                 && !request.headers.get('X-Client-Name')

@@ -10,9 +10,14 @@ export class CreditsDurableObject extends DurableObject<Env> {
 		super(ctx, env);
 	}
 
-	async init(ttl: number, credits: number) {
+	// TODO allow init with pre-activate
+	async init(ttl: number, credits: number, init: boolean = false) {
 		this.ctx.storage.put('credits', credits);
 		this.ctx.storage.setAlarm(Date.now() + ttl * 1000);
+		
+		if (init) {
+			await this.activate()
+		}
 	}
 	async activate() {
 		this.ctx.storage.put('activated', true)
