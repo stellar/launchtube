@@ -70,7 +70,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
     })
 
     const debug = formData.get('debug')
-    const mock = formData.get('mock')
+    const mock = formData.get('mock') as string | null
     const isMock = env.ENV === 'development' && mock && ['xdr', 'op'].includes(mock)
 
     let {
