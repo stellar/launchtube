@@ -29,5 +29,6 @@ build({
 	],
     external: [
 		'cloudflare:workers',
+		'cloudflare:email'
 	]
 });

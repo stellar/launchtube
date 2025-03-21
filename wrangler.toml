@@ -4,9 +4,14 @@ main = "dist/index.js"
 compatibility_date = "2024-05-12"
 workers_dev = false
 minify = true
+send_email = [
+    { name = "EMAIL" }
+]
+
+[observability]
+enabled = true
 
 [observability.logs]
-enabled = true
 invocation_logs = false
 
 [build]
@@ -15,6 +20,10 @@ command = "npm run build"
 [[migrations]]
 tag = "v1"
 new_classes = ["CreditsDurableObject", "SequencerDurableObject"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["MonitorDurableObject"]
 
 [triggers]
 crons = [ "*/5 * * * *" ]
@@ -28,6 +37,10 @@ class_name = "CreditsDurableObject"
 [[durable_objects.bindings]]
 name = "SEQUENCER_DURABLE_OBJECT"
 class_name = "SequencerDurableObject"
+
+[[durable_objects.bindings]]
+name = "MONITOR_DURABLE_OBJECT"
+class_name = "MonitorDurableObject"
 
 [[kv_namespaces]]
 binding = "SUDOS"
@@ -54,6 +67,9 @@ NATIVE_CONTRACT_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
 
 [env.prod]
 workers_dev = false
+send_email = [
+    { name = "EMAIL" }
+]
 
 [[env.prod.durable_objects.bindings]]
 name = "CREDITS_DURABLE_OBJECT"
@@ -62,6 +78,10 @@ class_name = "CreditsDurableObject"
 [[env.prod.durable_objects.bindings]]
 name = "SEQUENCER_DURABLE_OBJECT"
 class_name = "SequencerDurableObject"
+
+[[env.prod.durable_objects.bindings]]
+name = "MONITOR_DURABLE_OBJECT"
+class_name = "MonitorDurableObject"
 
 [[env.prod.kv_namespaces]]
 binding = "SUDOS"

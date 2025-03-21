@@ -120,9 +120,6 @@ export class SequencerDurableObject extends DurableObject<Env> {
 
             return send_res;
         } catch (err: any) {
-            // TODO seem to be getting some odd TRY_AGAIN_LATER errors here
-            // Occasionally it'll work though. Idk why.
-
             console.error(err);
             throw err
         }

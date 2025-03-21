@@ -1,5 +1,6 @@
 import { CreditsDurableObject } from "./credits";
 import { SequencerDurableObject } from "./sequencer";
+import { MonitorDurableObject } from "./monitor";
 import { IttyRouter, cors, error, withParams } from 'itty-router'
 import { apiLaunch } from "./api/launch";
 import { apiSequencerInfo } from "./api/sequencer-info";
@@ -15,7 +16,7 @@ import { apiQrCode } from "./api/qrcode";
 import { htmlClaim } from "./html/claim";
 import { apiTokenClaim } from "./api/token-claim";
 import { ZodError } from "zod";
-import { returnAllSequence } from "./common";
+import { returnAllSequence, SEQUENCER_ID_NAME } from "./common";
 import { StrKey, xdr } from "@stellar/stellar-sdk/minimal";
 import { apiTokenGet } from "./api/token-get";
 
@@ -132,6 +133,11 @@ const handler = {
 							message,
 							clientName: req.headers.get('X-Client-Name') || req.headers.get('x-client-name') || 'Unknown',
 						});
+
+						const monitorId = env.MONITOR_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
+						const monitorStub = env.MONITOR_DURABLE_OBJECT.get(monitorId) as DurableObjectStub<MonitorDurableObject>;
+
+						ctx.waitUntil(monitorStub.bumpErrorCount());
 					} else {
 						console.error(err);
 					}
@@ -165,5 +171,6 @@ const handler = {
 export {
 	SequencerDurableObject,
 	CreditsDurableObject,
+	MonitorDurableObject,
 	handler as default
 }
