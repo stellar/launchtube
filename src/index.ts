@@ -159,7 +159,7 @@ const handler = {
 							: err
 				)
 			})
-			.then((r) => corsify(r, req)),
+			.then((res) => corsify(res, req)),
 
 	scheduled: (
 		_ctrl: ScheduledController,
