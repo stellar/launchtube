@@ -195,7 +195,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             ledgerbounds: tx?.ledgerBounds,
             timebounds: tx?.timeBounds || {
                 minTime: now,
-                maxTime: now + 60 // 1 minute
+                maxTime: now + 30 // 30 seconds (also change the poll interval)
             },
             memo: tx?.memo,
             minAccountSequence: tx?.minAccountSequence,

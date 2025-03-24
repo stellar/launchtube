@@ -128,7 +128,7 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 2
         }
     }
 
-    else if (interval > 32) { // 2+4+8+16+32 = 62 seconds
+    else if (interval > 16) { // 2+4+8+16 = 30 seconds
         const { status, ...rest } = result
 
         throw {

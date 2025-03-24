@@ -70,7 +70,11 @@ const handler = {
 		router
 			.fetch(req, env, ctx)
 			.catch(async (err) => {
-				if (err?.type !== 'simulate') {
+				if (
+					err?.type !== 'simulate'
+					&& err !== 'No credits left'
+					&& err?.message !== 'No credits left'
+				) {
 					if (typeof err !== 'string') {
 						let message = err?.message || ''
 

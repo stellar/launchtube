@@ -2,8 +2,8 @@ import { DurableObject } from "cloudflare:workers";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
-const ERROR_INTERVAL = 30; // 30 minutes
-const ERROR_THRESHOLD = 1000; // 1000 errors
+const ERROR_INTERVAL = 30; // minutes
+const ERROR_THRESHOLD = 1000; // errors
 
 export class MonitorDurableObject extends DurableObject<Env> {
     private sending = false;
@@ -49,10 +49,8 @@ export class MonitorDurableObject extends DurableObject<Env> {
             msg.setSubject("High Error Count Detected");
             msg.addMessage({
                 contentType: 'text/plain',
-                data: `
-                    Launchtube has detected a high error count. ${ERROR_THRESHOLD} in ${ERROR_INTERVAL} minutes. Please check the logs for more information.
-                    https://dash.cloudflare.com/ba55b7ae9acfb3ed152103e3497c0752/workers/services/view/launchtube-prod/production/observability/logs?needle=%7B%22value%22%3A%22%22%2C%22isRegex%22%3Afalse%2C%22matchCase%22%3Afalse%7D&filters=%5B%7B%22key%22%3A%22%24metadata.error%22%2C%22operation%22%3A%22exists%22%2C%22type%22%3A%22string%22%2C%22id%22%3A%22oigq94dh0b%22%7D%5D&view=events&time=%7B%22value%22%3A1%2C%22unit%22%3A%22hours%22%2C%22type%22%3A%22relative%22%7D 
-                `,
+                data: `Launchtube has detected a high error count. ${ERROR_THRESHOLD} in ${ERROR_INTERVAL} minutes. Please check the logs for more information.
+https://dash.cloudflare.com/ba55b7ae9acfb3ed152103e3497c0752/workers/services/view/launchtube-prod/production/observability/logs?view=events&needle=%7B%22value%22%3A%22%22%2C%22isRegex%22%3Afalse%2C%22matchCase%22%3Afalse%7D&filters=%5B%7B%22key%22%3A%22%24metadata.error%22%2C%22operation%22%3A%22exists%22%2C%22type%22%3A%22string%22%2C%22id%22%3A%22rr0q8ej2238%22%7D%5D&time=%7B%22value%22%3A1%2C%22unit%22%3A%22hours%22%2C%22type%22%3A%22relative%22%7D`,
             });
 
             let message = new EmailMessage(
