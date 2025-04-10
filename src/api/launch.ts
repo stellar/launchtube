@@ -17,6 +17,9 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
     let sequencerStub: DurableObjectStub<SequencerDurableObject> | undefined
     let sequenceSecret: string | undefined
 
+    // TODO I don't think we need auth and func. It turns out there is an Operation XDR
+    // e.g. AAAAAAAAABgAAAADAAAAAAAAAAAAAAAAtC+Cy5aKws4APbaA0DzN6v4Tf7tWQukK+itwh8JhHin70zOJBhMoSsobZiuaHtaLgtggZq1RhInV3qIJ+U5gwAAAAAB9D3lsa8kksiN/XFgciTSXj+AmLKgcLW36cA/H4l58+QAAAAYAAAASAAAAAAAAAACO+drsns+C8ivJ7BbEvGPuuaf+RI7JYRYQh3tTDoG6yAAAAA4AAAANQWkgTWVtZSBUb2tlbgAAAAAAAA4AAAAGQUlNRU1FAAAAAAADAAAABwAAAAoAAAAAAAAAAAAAAAAAAABFAAAACgAAAAAAAAAAAAAAAAAKookAAAAA
+
     const formData = await request.formData() as FormData
     const schema = object({
         mock: zenum(['xdr', 'op']).optional(),
@@ -171,9 +174,6 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
     let transaction: Transaction
 
     if (sim) {
-        const invokeContract = func.invokeContract()
-        const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
-        const function_name = invokeContract.functionName().toString()
         const rpc = getRpc(env)
         const sequenceSource = await rpc
             .getAccount(sequencePubkey)
@@ -195,7 +195,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             ledgerbounds: tx?.ledgerBounds,
             timebounds: tx?.timeBounds || {
                 minTime: now,
-                maxTime: now + 30 // 30 seconds (also change the poll interval)
+                maxTime: now + 30 // +{x} seconds (also change the poll interval)
             },
             memo: tx?.memo,
             minAccountSequence: tx?.minAccountSequence,
@@ -203,12 +203,10 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             minAccountSequenceLedgerGap: tx?.minAccountSequenceLedgerGap,
             extraSigners: tx?.extraSigners,
         })
-            .addOperation(Operation.invokeContractFunction({
-                contract,
-                function: function_name,
-                args: invokeContract.args(),
+            .addOperation(Operation.invokeHostFunction({
+                func,
                 auth,
-                source: op?.source
+                source: op?.source,
             }))
             .build()
 
@@ -225,18 +223,24 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         )) throw 'Auth invalid'
 
         // HOTFIX(s) for KALE `plant`
-        if (
-            contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
-            && function_name === 'plant'
-        ) {
+        try {
+            const invokeContract = func.invokeContract()
+            const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
+            const function_name = invokeContract.functionName().toString()
+
             if (
-                env.ENV === 'production'
-                && !request.headers.get('X-Client-Name')
-                && !request.headers.get('x-client-name')
+                contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
+                && function_name === 'plant'
             ) {
-                throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
+                if (
+                    env.ENV === 'production'
+                    && !request.headers.get('X-Client-Name')
+                    && !request.headers.get('x-client-name')
+                ) {
+                    throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
+                }
             }
-        }
+        } catch {}
 
         const sorobanData = transactionData.build()
 

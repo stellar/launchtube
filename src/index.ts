@@ -141,7 +141,9 @@ const handler = {
 						const monitorId = env.MONITOR_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
 						const monitorStub = env.MONITOR_DURABLE_OBJECT.get(monitorId) as DurableObjectStub<MonitorDurableObject>;
 
-						ctx.waitUntil(monitorStub.bumpErrorCount());
+						if (!message.includes('try again later')) {
+							ctx.waitUntil(monitorStub.bumpErrorCount());
+						}
 					} else {
 						console.error(err);
 					}
