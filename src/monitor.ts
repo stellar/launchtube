@@ -3,7 +3,7 @@ import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
 const ERROR_INTERVAL = 30; // minutes
-const ERROR_THRESHOLD = 2500; // errors
+const ERROR_THRESHOLD = 3000; // errors
 
 export class MonitorDurableObject extends DurableObject<Env> {
     private sending = false;

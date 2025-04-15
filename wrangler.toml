@@ -4,6 +4,7 @@ main = "dist/index.js"
 compatibility_date = "2024-05-12"
 workers_dev = false
 minify = true
+logpush = true
 send_email = [
     { name = "EMAIL" }
 ]

@@ -279,30 +279,32 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
     // It should just assume the xdr fee
     if (!fee) {
-        const rpc = getRpc(env)
+        // const rpc = getRpc(env)
 
-        try {
-            const { sorobanInclusionFee } = await rpc.getFeeStats()
+        // try {
+        //     const { sorobanInclusionFee } = await rpc.getFeeStats()
 
-            fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
-            fee = Math.max(fee, Number(BASE_FEE))
-        } catch (err: any) {
-            if (typeof err !== 'string') {
-                err.rpc = rpc.serverURL.toString()
-                err.message = `getFeeStats error ${err.rpc}`
-            }
+        //     fee = Number(sorobanInclusionFee.p50 || BASE_FEE)
+        //     fee = Math.max(fee, Number(BASE_FEE))
+        // } catch (err: any) {
+        //     if (typeof err !== 'string') {
+        //         err.rpc = rpc.serverURL.toString()
+        //         err.message = `getFeeStats error ${err.rpc}`
+        //     }
 
-            console.error(err);
+        //     console.error(err);
 
-            fee = Number(MIN_FEE)
-        }
+        //     fee = Number(MIN_FEE)
+        // }
 
-        // Increase the fee by a random number from 1 through the `BASE_FEE` just to ensure we're not underpaying
-        // and because Stellar doesn't seem to like when too many transactions with the same inclusion fee are being submitted
-        fee += getRandomNumber(1, Number(BASE_FEE));
+        // // Increase the fee by a random number from 1 through the `BASE_FEE` just to ensure we're not underpaying
+        // // and because Stellar doesn't seem to like when too many transactions with the same inclusion fee are being submitted
+        // fee += getRandomNumber(1, Number(BASE_FEE));
 
-        // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
-        fee = fee * 2
+        // // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
+        // fee = fee * 2
+
+        fee = (Number(BASE_FEE) + 1) * 2
     } else {
         // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
         // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
