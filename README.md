@@ -170,8 +170,22 @@ If you are a member of the SDF and need an auth token let [tyler@stellar.org](ma
 
 ### `GET` `/qrcode`
 
-Generate a list of new credit JWT tokens
+Generate a QR code for a new JWT token
     
+#### Query
+
+- `ttl`
+    
+    The number of seconds these tokens should live for
+    
+- `xlm`
+    
+    The number of xlm this tokens can spend
+
+- `claim`
+
+    Boolean value to redirect away from the QR page right to the claim link page
+
 #### Return
 
 `PNG` QR code image linking to `{location.origin}/claim?code={claim code}`. 
