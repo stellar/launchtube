@@ -141,7 +141,11 @@ const handler = {
 						const monitorId = env.MONITOR_DURABLE_OBJECT.idFromName(SEQUENCER_ID_NAME);
 						const monitorStub = env.MONITOR_DURABLE_OBJECT.get(monitorId) as DurableObjectStub<MonitorDurableObject>;
 
-						if (!message.includes('try again later')) {
+						if (
+							!message.includes('try again later')
+							&& !message.includes('equal to the resource fee')
+							&& !message.includes('no greater than 30 seconds')
+						) {
 							ctx.waitUntil(monitorStub.bumpErrorCount());
 						}
 					} else {
