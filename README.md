@@ -65,6 +65,12 @@ OR
 
     Array of `xdr.SorobanAuthorizationEntry` encoded `XDR` `String`s 
 
+OPTIONAL
+
+- `sim` (default `true`)
+
+    Boolean flag for if you want Launchtube to handle simulation for you or not. This is especially useful if you want to borrow the invoker auth of the transaction for the Soroban auth entry. Please keep in mind though if you opt for `sim=false` you MUST set a transaction timeout for <= 30 seconds and keep your inclusion fee at or below 201 stroops.
+
 #### Headers
 
 - `Content-Type`: `x-www-form-urlencoded`
