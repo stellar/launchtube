@@ -59,7 +59,12 @@ export class SequencerDurableObject extends DurableObject<Env> {
             const fundKeypair = Keypair.fromSecret(this.env.FUND_SK)
             const fundPubkey = fundKeypair.publicKey()
 
-            const sequenceSecret = await this.getSequence()
+            let sequenceSecret = this.env.FUND_SK
+
+            try {
+                sequenceSecret = await this.getSequence()
+            } catch {}
+            
             const sequenceKeypair = Keypair.fromSecret(sequenceSecret)
             const sequencePubkey = sequenceKeypair.publicKey()
             const sequenceSource = await getRpc(this.env).getAccount(sequencePubkey)
@@ -100,7 +105,11 @@ export class SequencerDurableObject extends DurableObject<Env> {
                 .setTimeout(30)
                 .build()
 
-            transaction.sign(sequenceKeypair, fundKeypair)
+            if (sequenceKeypair.publicKey() === fundKeypair.publicKey()) {
+                transaction.sign(fundKeypair)
+            } else {
+                transaction.sign(sequenceKeypair, fundKeypair)
+            }
 
             const feeBumpTransaction = TransactionBuilder.buildFeeBumpTransaction(
                 fundKeypair,

@@ -45,11 +45,11 @@ Submit a transaction
 
 #### Body
 
-- `fee` (optional)
+<!-- - `fee` (optional)
     
     Number of credits (stroops) you want to spend on the [inclusion fee](https://developers.stellar.org/docs/learn/fundamentals/fees-resource-limits-metering#resource-fee) to submit the transaction
 
-AND
+AND -->
 
 - `xdr`
     

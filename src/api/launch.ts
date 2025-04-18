@@ -7,7 +7,7 @@ import { getMockData, arraysEqualUnordered, checkAuth, getRpc, getRandomNumber }
 import { SequencerDurableObject } from "../sequencer"
 
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
-const MIN_FEE = "100000";
+// const MIN_FEE = "100000";
 
 export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionContext) {
     const payload = await checkAuth(request, env)
@@ -20,6 +20,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
     // TODO I don't think we need auth and func. It turns out there is an Operation XDR
     // e.g. AAAAAAAAABgAAAADAAAAAAAAAAAAAAAAtC+Cy5aKws4APbaA0DzN6v4Tf7tWQukK+itwh8JhHin70zOJBhMoSsobZiuaHtaLgtggZq1RhInV3qIJ+U5gwAAAAAB9D3lsa8kksiN/XFgciTSXj+AmLKgcLW36cA/H4l58+QAAAAYAAAASAAAAAAAAAACO+drsns+C8ivJ7BbEvGPuuaf+RI7JYRYQh3tTDoG6yAAAAA4AAAANQWkgTWVtZSBUb2tlbgAAAAAAAA4AAAAGQUlNRU1FAAAAAAADAAAABwAAAAoAAAAAAAAAAAAAAAAAAABFAAAACgAAAAAAAAAAAAAAAAAKookAAAAA
 
+    const now = Math.floor(Date.now() / 1000)
     const formData = await request.formData() as FormData
     const schema = object({
         mock: zenum(['xdr', 'op']).optional(),
@@ -33,7 +34,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             (val) => val ? JSON.parse(val as string) : undefined,
             array(string()).optional()
         ),
-        fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)).optional(),
+        // fee: preprocess(Number, number().gte(Number(BASE_FEE)).lte(MAX_U32)).optional(),
     }).superRefine((input, ctx) => {
         if (input.mock) {
             if (input.sim === false && input.mock !== 'xdr')
@@ -80,7 +81,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         xdr: x,
         func: f,
         auth: a,
-        fee,
+        // fee,
         sim,
     } = Object.assign(
         isMock ? await getMockData(env, formData) : {},
@@ -187,7 +188,6 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
                 throw err
             })
-        const now = Math.floor(Date.now() / 1000)
 
         transaction = new TransactionBuilder(sequenceSource, {
             fee: '0',
@@ -278,7 +278,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
     }
 
     // It should just assume the xdr fee
-    if (!fee) {
+    // if (!fee) {
         // const rpc = getRpc(env)
 
         // try {
@@ -304,18 +304,18 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         // // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
         // fee = fee * 2
 
-        fee = (Number(BASE_FEE) + 1) * 2
-    } else {
+        let fee = Number(BASE_FEE) * 2 + 1
+    // } else {
         // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
         // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
-        fee = (fee + 1) * 2
-    }
+        // fee = (fee + 1) * 2
+    // }
 
     if (debug) return json({
         xdr: x,
         func: f,
         auth: a,
-        fee,
+        // fee,
     })
 
     /* NOTE 
@@ -334,6 +334,14 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         transaction,
         env.NETWORK_PASSPHRASE
     )
+
+    if (BigInt(feeBumpTransaction.fee) - BigInt(feeBumpTransaction.innerTransaction.fee) > 201n) {
+        throw 'Transaction inclusion fee is too high. Total transaction fee must be no greater than the resource fee + 201 stroops'
+    }
+
+    if ((Number(feeBumpTransaction.innerTransaction.timeBounds?.maxTime) - now) > 30) {
+        throw 'Transaction maxTime bound is too long. Must be no greater than 30 seconds'
+    }
 
     feeBumpTransaction.sign(fundKeypair)
 
