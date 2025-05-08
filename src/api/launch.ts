@@ -108,6 +108,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let op: Operation | undefined
         let func: xdr.HostFunction
         let auth: xdr.SorobanAuthorizationEntry[] | undefined
+        let fee = getRandomNumber(205, 605)
 
         // Passing `xdr`
         if (x) {
@@ -228,19 +229,22 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             try {
                 const invokeContract = func.invokeContract()
                 const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
-                const function_name = invokeContract.functionName().toString()
+                // const function_name = invokeContract.functionName().toString()
 
                 if (
                     contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
-                    && function_name === 'plant'
+                    // && function_name === 'plant'
                 ) {
-                    if (
-                        env.ENV === 'production'
-                        && !request.headers.get('X-Client-Name')
-                        && !request.headers.get('x-client-name')
-                    ) {
-                        throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
-                    }
+                    // if (
+                    //     env.ENV === 'production'
+                    //     && !request.headers.get('X-Client-Name')
+                    //     && !request.headers.get('x-client-name')
+                    // ) {
+                    //     throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
+                    // }
+
+                    // restrict KALE contract to minimum fee
+                    fee = Number(BASE_FEE) * 2 + 1
                 }
             } catch {}
 
@@ -265,7 +269,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
                     resourceFee = sorobanData.resourceFee().toBigInt()
                     transaction = tx
 
-                    if (BigInt(tx.fee) > resourceFee) {
+                    if ((BigInt(tx.fee)) > (resourceFee + 201n)) {
                         throw 'Transaction fee must be equal to the resource fee'
                     }
 
@@ -310,7 +314,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             // // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
             // fee = fee * 2
 
-            let fee = Number(BASE_FEE) * 2 + 1
+            // let fee = Number(BASE_FEE) * 2 + 1
         // } else {
             // Adding 1 to the fee to ensure when we divide / 2 later we don't go below the minimum fee
             // Double because we're wrapping the tx in a fee bump so we'll need to pay for both
