@@ -108,7 +108,8 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let op: Operation | undefined
         let func: xdr.HostFunction
         let auth: xdr.SorobanAuthorizationEntry[] | undefined
-        let fee = getRandomNumber(205, 605)
+        // let fee = getRandomNumber(205, 605)
+        let fee = getRandomNumber(505, 1005)
 
         // Passing `xdr`
         if (x) {

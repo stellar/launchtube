@@ -51,10 +51,10 @@ id = "1fcab4e76e4948ba9b728271fa51586d"
 binding = "CODES"
 id = "1717f596858e4685b9b77b0ac047c2b5"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "launchtube-testnet"
-database_id = "80e789b8-41a6-4741-aeca-62b4203661dc"
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "launchtube-testnet"
+# database_id = "80e789b8-41a6-4741-aeca-62b4203661dc"
 
 [define]
 global = "globalThis"
@@ -92,10 +92,10 @@ id = "4d86c63ffe344460ab9f740c48e01cab"
 binding = "CODES"
 id = "522dc827cd9f43e58a2810d974fb80c3"
 
-[[env.prod.d1_databases]]
-binding = "DB"
-database_name = "launchtube-public"
-database_id = "22bd71e0-81f5-4d93-80a9-1242869cbbe5"
+# [[env.prod.d1_databases]]
+# binding = "DB"
+# database_name = "launchtube-public"
+# database_id = "22bd71e0-81f5-4d93-80a9-1242869cbbe5"
 
 [env.prod.define]
 global = "globalThis"

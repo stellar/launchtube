@@ -59,7 +59,7 @@ router
 	.get('/gen', apiTokensGenerate)
 	.get('/seq', apiSequencerInfo)
 	.post('/seq', apiSequencerCreate)
-	.post('/sql', apiSql)
+	// .post('/sql', apiSql)
 	.get('/:sub', apiTokenGet)
 	.delete('/:sub', apiTokenDelete)
 	// ---

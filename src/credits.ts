@@ -69,18 +69,19 @@ export class CreditsDurableObject extends DurableObject<Env> {
 
 		await this.ctx.storage.put('credits', now_credits);
 
+		// TODO D1_ERROR: Exceeded maximum DB size
 		// Since metrics aren't critical punt them into the `ctx.waitUntil` 
-		const metric = this.env.DB.prepare(`
-			INSERT OR IGNORE INTO Transactions (Sub, Tx) 
-			VALUES (?1, ?2)
-		`)
-			.bind(
-				this.ctx.id.toString(),
-				tx
-			)
-			.run()
+		// const metric = this.env.DB.prepare(`
+		// 	INSERT OR IGNORE INTO Transactions (Sub, Tx) 
+		// 	VALUES (?1, ?2)
+		// `)
+		// 	.bind(
+		// 		this.ctx.id.toString(),
+		// 		tx
+		// 	)
+		// 	.run()
 
-		this.ctx.waitUntil(metric)
+		// this.ctx.waitUntil(metric)
 
 		return now_credits
 	}
