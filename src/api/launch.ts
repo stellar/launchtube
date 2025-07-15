@@ -108,8 +108,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let op: Operation | undefined
         let func: xdr.HostFunction
         let auth: xdr.SorobanAuthorizationEntry[] | undefined
-        // let fee = getRandomNumber(205, 605)
-        let fee = getRandomNumber(505, 1005)
+        let fee = Number(BASE_FEE) * 2 + 2
 
         // Passing `xdr`
         if (x) {
@@ -266,6 +265,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             switch (tx.toEnvelope().switch()) {
                 case xdr.EnvelopeType.envelopeTypeTx():
                     const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
+                    const sorobanDataResource = sorobanData.resources()
 
                     resourceFee = sorobanData.resourceFee().toBigInt()
                     transaction = tx
@@ -276,6 +276,24 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
                     if ((Number(tx.timeBounds?.maxTime) - now) > 30) {
                         throw 'Transaction `timeBounds.maxTime` too far into the future. Must be no greater than 30 seconds'
+                    }
+
+                    // Gut check the transaction to ensure it's valid
+                    const { transactionData } = await simulateTransaction(env, transaction)
+                    const simTxDataResource = transactionData.build().resources()
+
+                    if (
+                        sorobanDataResource.readBytes() < simTxDataResource.readBytes()
+                        || sorobanDataResource.writeBytes() < simTxDataResource.writeBytes()
+                    ) {
+                        throw {
+                            message: 'Transaction resource usage is greater than the simulated resource usage',
+                            resourceFee: `${resourceFee} vs ${transactionData.build().resourceFee().toBigInt()}`,
+                            instructions: `${sorobanDataResource.instructions()} vs ${simTxDataResource.instructions()}`,
+                            readBytes: `${sorobanDataResource.readBytes()} vs ${simTxDataResource.readBytes()}`,
+                            writeBytes: `${sorobanDataResource.writeBytes()} vs ${simTxDataResource.writeBytes()}`,
+                            envelopeXdr: transaction.toXDR(),
+                        }
                     }
 
                     break;
