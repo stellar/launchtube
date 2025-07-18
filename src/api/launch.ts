@@ -1,9 +1,9 @@
 import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal"
 import { json } from "itty-router"
-import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
-import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
+import { object, string, preprocess, array, ZodIssueCode, boolean, enum as zenum } from "zod"
+import { simulateTransaction, sendTransaction, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
 import { CreditsDurableObject } from "../credits"
-import { getMockData, arraysEqualUnordered, checkAuth, getRpc, getRandomNumber } from "../helpers"
+import { getMockData, arraysEqualUnordered, checkAuth, getRpc } from "../helpers"
 import { SequencerDurableObject } from "../sequencer"
 
 // NOTE using a higher base fee than "100" to try and counter some fee errors I was seeing
@@ -265,7 +265,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             switch (tx.toEnvelope().switch()) {
                 case xdr.EnvelopeType.envelopeTypeTx():
                     const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
-                    const sorobanDataResource = sorobanData.resources()
+                    // const sorobanDataResource = sorobanData.resources()
 
                     resourceFee = sorobanData.resourceFee().toBigInt()
                     transaction = tx
@@ -279,22 +279,22 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
                     }
 
                     // Gut check the transaction to ensure it's valid
-                    const { transactionData } = await simulateTransaction(env, transaction)
-                    const simTxDataResource = transactionData.build().resources()
+                    // const { transactionData } = await simulateTransaction(env, transaction)
+                    // const simTxDataResource = transactionData.build().resources()
 
-                    if (
-                        sorobanDataResource.readBytes() < simTxDataResource.readBytes()
-                        || sorobanDataResource.writeBytes() < simTxDataResource.writeBytes()
-                    ) {
-                        throw {
-                            message: 'Transaction resource usage is greater than the simulated resource usage',
-                            resourceFee: `${resourceFee} vs ${transactionData.build().resourceFee().toBigInt()}`,
-                            instructions: `${sorobanDataResource.instructions()} vs ${simTxDataResource.instructions()}`,
-                            readBytes: `${sorobanDataResource.readBytes()} vs ${simTxDataResource.readBytes()}`,
-                            writeBytes: `${sorobanDataResource.writeBytes()} vs ${simTxDataResource.writeBytes()}`,
-                            envelopeXdr: transaction.toXDR(),
-                        }
-                    }
+                    // if (
+                    //     sorobanDataResource.readBytes() < simTxDataResource.readBytes()
+                    //     || sorobanDataResource.writeBytes() < simTxDataResource.writeBytes()
+                    // ) {
+                    //     throw {
+                    //         message: 'Transaction resource usage is greater than the simulated resource usage',
+                    //         resourceFee: `${resourceFee} vs ${transactionData.build().resourceFee().toBigInt()}`,
+                    //         instructions: `${sorobanDataResource.instructions()} vs ${simTxDataResource.instructions()}`,
+                    //         readBytes: `${sorobanDataResource.readBytes()} vs ${simTxDataResource.readBytes()}`,
+                    //         writeBytes: `${sorobanDataResource.writeBytes()} vs ${simTxDataResource.writeBytes()}`,
+                    //         envelopeXdr: transaction.toXDR(),
+                    //     }
+                    // }
 
                     break;
                 default:

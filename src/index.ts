@@ -7,7 +7,7 @@ import { apiSequencerInfo } from "./api/sequencer-info";
 import { apiTokenInfo } from "./api/token-info";
 import { apiTokenDelete } from "./api/token-delete";
 import { apiTokensGenerate } from "./api/tokens-generate";
-import { apiSql } from "./api/sql";
+// import { apiSql } from "./api/sql";
 import { apiTokenActivate } from "./api/token-activate";
 import { apiSequencerCreate } from "./api/sequencer-create";
 import { htmlTermsAndConditions } from "./html/terms-and-conditions";

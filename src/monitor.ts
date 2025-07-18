@@ -2,8 +2,8 @@ import { DurableObject } from "cloudflare:workers";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
-const ERROR_INTERVAL = 30; // minutes
-const ERROR_THRESHOLD = 10000; // errors
+const ERROR_INTERVAL = 60; // minutes
+const ERROR_THRESHOLD = 100000; // errors
 
 export class MonitorDurableObject extends DurableObject<Env> {
     private sending = false;
