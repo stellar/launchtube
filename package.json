@@ -13,22 +13,22 @@
     "types": "wrangler types"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "13.3.0",
+    "@stellar/stellar-sdk": "^14.0.0-rc.3",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
-    "itty-fetcher": "^0.9.4",
+    "itty-fetcher": "^1.0.3",
     "itty-router": "^5.0.18",
     "mimetext": "^3.0.27",
     "qr-image": "^3.2.0",
-    "zod": "^3.25.71"
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@types/qr-image": "^3.2.9",
-    "esbuild": "^0.25.5",
+    "esbuild": "^0.25.6",
     "esbuild-plugin-polyfill-node": "^0.3.0",
     "esbuild-plugin-replace": "^1.4.0",
     "esbuild-plugin-text-replace": "^1.3.0",
     "loadtest": "^8.2.0",
     "typescript": "^5.8.3",
-    "wrangler": "^4.23.0"
+    "wrangler": "^4.25.0"
   }
 }

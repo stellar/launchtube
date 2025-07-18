@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@stellar/stellar-sdk':
-        specifier: 13.3.0
-        version: 13.3.0
+        specifier: ^14.0.0-rc.3
+        version: 14.0.0-rc.3
       '@tsndr/cloudflare-worker-jwt':
         specifier: ^3.2.0
         version: 3.2.0
       itty-fetcher:
-        specifier: ^0.9.4
-        version: 0.9.4
+        specifier: ^1.0.3
+        version: 1.0.3
       itty-router:
         specifier: ^5.0.18
         version: 5.0.18
@@ -27,14 +27,14 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       zod:
-        specifier: ^3.25.71
-        version: 3.25.76
+        specifier: ^4.0.5
+        version: 4.0.5
     devDependencies:
       '@types/qr-image':
         specifier: ^3.2.9
         version: 3.2.9
       esbuild:
-        specifier: ^0.25.5
+        specifier: ^0.25.6
         version: 0.25.6
       esbuild-plugin-polyfill-node:
         specifier: ^0.3.0
@@ -52,7 +52,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       wrangler:
-        specifier: ^4.23.0
+        specifier: ^4.25.0
         version: 4.25.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
 packages:
@@ -539,6 +539,14 @@ packages:
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
 
+  '@noble/curves@1.9.4':
+    resolution: {integrity: sha512-2bKONnuM53lINoDrSmK8qP8W271ms7pygDhZt4SiLOoLwBtoHqeCFi6RG42V8zd3mLHuJFhU/Bmaqo4nX0/kBw==}
+    engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
+
   '@poppinss/colors@4.1.5':
     resolution: {integrity: sha512-FvdDqtcRCtz6hThExcFOgW0cWX+xwSMWcRuQe5ZEb2m7cVQOAVZOIMt+/v9RxGiD9/OY16qJBXK4CVKWAPalBw==}
 
@@ -558,13 +566,13 @@ packages:
   '@stellar/js-xdr@3.1.2':
     resolution: {integrity: sha512-VVolPL5goVEIsvuGqDc5uiKxV03lzfWdvYg1KikvwheDmTBO68CKDji3bAZ/kppZrx5iTA8z3Ld5yuytcvhvOQ==}
 
-  '@stellar/stellar-base@13.1.0':
-    resolution: {integrity: sha512-90EArG+eCCEzDGj3OJNoCtwpWDwxjv+rs/RNPhvg4bulpjN/CSRj+Ys/SalRcfM4/WRC5/qAfjzmJBAuquWhkA==}
-    engines: {node: '>=18.0.0'}
+  '@stellar/stellar-base@14.0.0-rc.2':
+    resolution: {integrity: sha512-jzDJANrh8hcW3yWikS0At6MWOmf2dCD2cwWS1o0nZLRDj3tFMCrIcOGmw9uB7Widomdu4DzKHetpgn+XB1prpg==}
+    engines: {node: '>=20.0.0'}
 
-  '@stellar/stellar-sdk@13.3.0':
-    resolution: {integrity: sha512-8+GHcZLp+mdin8gSjcgfb/Lb6sSMYRX6Nf/0LcSJxvjLQR0XHpjGzOiRbYb2jSXo51EnA6kAV5j+4Pzh5OUKUg==}
-    engines: {node: '>=18.0.0'}
+  '@stellar/stellar-sdk@14.0.0-rc.3':
+    resolution: {integrity: sha512-RI+8uPYAHvauuwmGNbofv9e6Q2LnUjdqUwRCBSN7ZCEWH48DA/bAL6u+X7+WcF13PHsZPeNlp5bHZ5xHbzXdYA==}
+    engines: {node: '>=20.0.0'}
 
   '@tsndr/cloudflare-worker-jwt@3.2.0':
     resolution: {integrity: sha512-y45452JzKxFDfCUHNGrdgIcrJTkYa6xtrKtCQTjKj+hjzw8dOHF9R0uGuU8WxvCCMi4sMzZ1KREnZTsTy7DsiQ==}
@@ -601,35 +609,6 @@ packages:
 
   axios@1.10.0:
     resolution: {integrity: sha512-/1xYAC4MP/HEG+3duIhFr4ZQXR4sQXOIe+o6sdqzeykGLx6Upp/1p8MHqhINOvGeP7xyNHe7tsiJByc4SSVUxw==}
-
-  bare-addon-resolve@1.9.4:
-    resolution: {integrity: sha512-unn6Vy/Yke6F99vg/7tcrvM2KUvIhTNniaSqDbam4AWkd4NhvDVSrQiRYVlNzUV2P7SPobkCK7JFVxrJk9btCg==}
-    peerDependencies:
-      bare-url: '*'
-    peerDependenciesMeta:
-      bare-url:
-        optional: true
-
-  bare-module-resolve@1.11.1:
-    resolution: {integrity: sha512-DCxeT9i8sTs3vUMA3w321OX/oXtNEu5EjObQOnTmCdNp5RXHBAvAaBDHvAi9ta0q/948QPz+co6SsGi6aQMYRg==}
-    peerDependencies:
-      bare-url: '*'
-    peerDependenciesMeta:
-      bare-url:
-        optional: true
-
-  bare-os@3.6.1:
-    resolution: {integrity: sha512-uaIjxokhFidJP+bmmvKSgiMzj2sV5GPHaZVAIktcxcpCyBFFWO+YlikVAdhmUo2vYFvFhOXIAlldqV29L8126g==}
-    engines: {bare: '>=1.14.0'}
-
-  bare-path@3.0.0:
-    resolution: {integrity: sha512-tyfW2cQcB5NN8Saijrhqn0Zh7AnFNsnczRcuWODH0eYAXBsJ5gVxAUuNr7tsHSC6IZ77cA0SitzT+s47kot8Mw==}
-
-  bare-semver@1.0.1:
-    resolution: {integrity: sha512-UtggzHLiTrmFOC/ogQ+Hy7VfoKoIwrP1UFcYtTxoCUdLtsIErT8+SWtOC2DH/snT9h+xDrcBEPcwKei1mzemgg==}
-
-  bare-url@2.1.6:
-    resolution: {integrity: sha512-FgjDeR+/yDH34By4I0qB5NxAoWv7dOTYcOXwn73kr+c93HyC2lU6tnjifqUe33LKMJcDyCYPQjEAqgOQiXkE2Q==}
 
   base32.js@0.1.0:
     resolution: {integrity: sha512-n3TkB02ixgBOhTvANakDb4xaMXnYUVkNoRFJjQflcqMQhyEKxEHdj3E6N8t8sUQ0mjH/3/JxzlXuz3ul/J90pQ==}
@@ -905,8 +884,8 @@ packages:
   isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
-  itty-fetcher@0.9.4:
-    resolution: {integrity: sha512-o5YpTmov46EbzTrrVpeR9sRK3itWa32VsV9Fv04CzzDm1ZvAXG0RoOGjT9ECOwyipheNf4eLTkstfbRtG8Epgg==}
+  itty-fetcher@1.0.3:
+    resolution: {integrity: sha512-mryz6rVRKSVTfzAQJjZuAULZkKGDBsxQBbF8Xvzr5r7yKv16zwaxVtYazB0vJYboNNJJDlqJyBeJwrQEOe3Rsg==}
 
   itty-router@5.0.18:
     resolution: {integrity: sha512-mK3ReOt4ARAGy0V0J7uHmArG2USN2x0zprZ+u+YgmeRjXTDbaowDy3kPcsmQY6tH+uHhDgpWit9Vqmv/4rTXwA==}
@@ -990,10 +969,6 @@ packages:
   randombytes@2.1.0:
     resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
 
-  require-addon@1.1.0:
-    resolution: {integrity: sha512-KbXAD5q2+v1GJnkzd8zzbOxchTkStSyJZ9QwoCq3QwEXAaIlG3wDYRZGzVD357jmwaGY7hr5VaoEAL0BkF0Kvg==}
-    engines: {bare: '>=1.10.0'}
-
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
 
@@ -1017,9 +992,6 @@ packages:
 
   simple-swizzle@0.2.2:
     resolution: {integrity: sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg==}
-
-  sodium-native@4.3.3:
-    resolution: {integrity: sha512-OnxSlN3uyY8D0EsLHpmm2HOFmKddQVvEMmsakCrXUzSd8kjjbzL413t4ZNF3n0UxSwNgwTyUvkmZHTfuCeiYSw==}
 
   sourcemap-codec@1.4.8:
     resolution: {integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==}
@@ -1052,9 +1024,6 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-
-  tweetnacl@1.0.3:
-    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type@2.7.3:
     resolution: {integrity: sha512-8j+1QmAbPvLZow5Qpi6NCaN8FB60p/6x8/vfNqOk/hC+HuvFZhL4+WfekuhQLiqFZXOgQdrs3B+XxEmCc6b3FQ==}
@@ -1144,8 +1113,8 @@ packages:
   zod@3.22.3:
     resolution: {integrity: sha512-EjIevzuJRiRPbVH4mGc8nApb/lVLKVpmUhAaR5R5doKGfAnGJ6Gr3CViAVjP+4FWSxCsybeWQdcgCtbX+7oZug==}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.0.5:
+    resolution: {integrity: sha512-/5UuuRPStvHXu7RS+gmvRf4NXrNxpSllGwDnCBcJZtQsKrviYXm54yDGV2KYNLT5kq0lHGcl7lqWJLgSaG+tgA==}
 
 snapshots:
 
@@ -1428,6 +1397,12 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
+  '@noble/curves@1.9.4':
+    dependencies:
+      '@noble/hashes': 1.8.0
+
+  '@noble/hashes@1.8.0': {}
+
   '@poppinss/colors@4.1.5':
     dependencies:
       kleur: 4.1.5
@@ -1446,20 +1421,18 @@ snapshots:
 
   '@stellar/js-xdr@3.1.2': {}
 
-  '@stellar/stellar-base@13.1.0':
+  '@stellar/stellar-base@14.0.0-rc.2':
     dependencies:
+      '@noble/curves': 1.9.4
       '@stellar/js-xdr': 3.1.2
       base32.js: 0.1.0
       bignumber.js: 9.3.1
       buffer: 6.0.3
       sha.js: 2.4.12
-      tweetnacl: 1.0.3
-    optionalDependencies:
-      sodium-native: 4.3.3
 
-  '@stellar/stellar-sdk@13.3.0':
+  '@stellar/stellar-sdk@14.0.0-rc.3':
     dependencies:
-      '@stellar/stellar-base': 13.1.0
+      '@stellar/stellar-base': 14.0.0-rc.2
       axios: 1.10.0
       bignumber.js: 9.3.1
       eventsource: 2.0.2
@@ -1503,37 +1476,6 @@ snapshots:
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
-
-  bare-addon-resolve@1.9.4(bare-url@2.1.6):
-    dependencies:
-      bare-module-resolve: 1.11.1(bare-url@2.1.6)
-      bare-semver: 1.0.1
-    optionalDependencies:
-      bare-url: 2.1.6
-    optional: true
-
-  bare-module-resolve@1.11.1(bare-url@2.1.6):
-    dependencies:
-      bare-semver: 1.0.1
-    optionalDependencies:
-      bare-url: 2.1.6
-    optional: true
-
-  bare-os@3.6.1:
-    optional: true
-
-  bare-path@3.0.0:
-    dependencies:
-      bare-os: 3.6.1
-    optional: true
-
-  bare-semver@1.0.1:
-    optional: true
-
-  bare-url@2.1.6:
-    dependencies:
-      bare-path: 3.0.0
-    optional: true
 
   base32.js@0.1.0: {}
 
@@ -1851,7 +1793,7 @@ snapshots:
 
   isarray@2.0.5: {}
 
-  itty-fetcher@0.9.4: {}
+  itty-fetcher@1.0.3: {}
 
   itty-router@5.0.18: {}
 
@@ -1935,12 +1877,6 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  require-addon@1.1.0:
-    dependencies:
-      bare-addon-resolve: 1.9.4(bare-url@2.1.6)
-      bare-url: 2.1.6
-    optional: true
-
   safe-buffer@5.2.1: {}
 
   semver@7.7.2: {}
@@ -1990,11 +1926,6 @@ snapshots:
     dependencies:
       is-arrayish: 0.3.2
 
-  sodium-native@4.3.3:
-    dependencies:
-      require-addon: 1.1.0
-    optional: true
-
   sourcemap-codec@1.4.8: {}
 
   stdio@0.2.7: {}
@@ -2019,8 +1950,6 @@ snapshots:
 
   tslib@2.8.1:
     optional: true
-
-  tweetnacl@1.0.3: {}
 
   type@2.7.3: {}
 
@@ -2125,4 +2054,4 @@ snapshots:
 
   zod@3.22.3: {}
 
-  zod@3.25.76: {}
+  zod@4.0.5: {}
