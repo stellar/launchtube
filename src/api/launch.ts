@@ -1,4 +1,4 @@
-import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder } from "@stellar/stellar-sdk/minimal"
+import { BASE_FEE, Keypair, xdr, Transaction, Operation, Address, StrKey, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk/minimal"
 import { json } from "itty-router"
 import { object, string, preprocess, array, number, ZodIssueCode, boolean, enum as zenum } from "zod"
 import { simulateTransaction, sendTransaction, MAX_U32, EAGER_CREDITS, SEQUENCER_ID_NAME } from "../common"
@@ -177,6 +177,16 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let resourceFee: bigint
         let transaction: Transaction
 
+        let invokeContract: xdr.InvokeContractArgs | undefined
+        let contractAddress: string | undefined
+        let functionName: string | undefined
+
+        try {
+            invokeContract = func.invokeContract()
+            contractAddress = StrKey.encodeContract(invokeContract.contractAddress().contractId() as unknown as Buffer)
+            functionName = invokeContract.functionName().toString()
+        } catch {}
+
         if (sim) {
             const rpc = getRpc(env)
             const sequenceSource = await rpc
@@ -226,27 +236,51 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             )) throw 'Auth invalid'
 
             // HOTFIX(s) for KALE `plant`
-            try {
-                const invokeContract = func.invokeContract()
-                const contract = StrKey.encodeContract(invokeContract.contractAddress().contractId())
-                // const function_name = invokeContract.functionName().toString()
+            // if plant
+            // if Block read in read_only
+            // increase read bytes resource by 460
+            // https://discord.com/channels/897514728459468821/1347766703240773702
+            // solves for a race condition during the transaction from one block to the next
+            // if (
+            //     contractAddress === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
+            //     && functionName === 'plant'
+            //     && transactionData.build().resources().footprint().readOnly().findIndex((key) => {
+            //         try {
+            //             const [ k ] = scValToNative(key.contractData().key());
+            //             return k === 'Block';
+            //         } catch {}
+            //         return false;
+            //     }) > -1
+            // ) {
+            //     const resources = transactionData.build().resources()
 
-                if (
-                    contract === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
-                    // && function_name === 'plant'
-                ) {
-                    // if (
-                    //     env.ENV === 'production'
-                    //     && !request.headers.get('X-Client-Name')
-                    //     && !request.headers.get('x-client-name')
-                    // ) {
-                    //     throw 'Missing `X-Client-Name` header. Please update your farming client to the latest version.'
-                    // }
+            //     transactionData.setResources(
+            //         resources.instructions(),
+            //         resources.readBytes() + 460,
+            //         resources.writeBytes()
+            //     )
 
-                    // restrict KALE contract to minimum fee
-                    fee = Number(BASE_FEE) * 2 + 1
-                }
-            } catch {}
+            //     console.log('Well look at that', resources.readBytes(), transactionData.build().resources().readBytes(), transaction.hash().toString('hex'));
+            // }
+
+            // TODO Once we remove the extra get_block call we can use this code
+            // if (
+            //     contractAddress === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
+            //     && functionName === 'plant'    
+            // ) {
+            //     transactionData.setReadOnly(
+            //         transactionData.build().resources().footprint().readOnly().filter((key) => {
+            //             try {
+            //                 const [ k ] = scValToNative(key.contractData().key());
+            //                 return k !== 'Block';
+            //             } catch {}
+
+            //             return true;
+            //         })
+            //     )
+
+            //     console.log('Well look at that', transaction.hash().toString('hex'));
+            // }
 
             const sorobanData = transactionData.build()
 
@@ -265,7 +299,6 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             switch (tx.toEnvelope().switch()) {
                 case xdr.EnvelopeType.envelopeTypeTx():
                     const sorobanData = tx.toEnvelope().v1().tx().ext().sorobanData()
-                    const sorobanDataResource = sorobanData.resources()
 
                     resourceFee = sorobanData.resourceFee().toBigInt()
                     transaction = tx
@@ -278,23 +311,21 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
                         throw 'Transaction `timeBounds.maxTime` too far into the future. Must be no greater than 30 seconds'
                     }
 
-                    // Gut check the transaction to ensure it's valid
-                    const { transactionData } = await simulateTransaction(env, transaction)
-                    const simTxDataResource = transactionData.build().resources()
-
-                    if (
-                        sorobanDataResource.readBytes() < simTxDataResource.readBytes()
-                        || sorobanDataResource.writeBytes() < simTxDataResource.writeBytes()
-                    ) {
-                        throw {
-                            message: 'Transaction resource usage is greater than the simulated resource usage',
-                            resourceFee: `${resourceFee} vs ${transactionData.build().resourceFee().toBigInt()}`,
-                            instructions: `${sorobanDataResource.instructions()} vs ${simTxDataResource.instructions()}`,
-                            readBytes: `${sorobanDataResource.readBytes()} vs ${simTxDataResource.readBytes()}`,
-                            writeBytes: `${sorobanDataResource.writeBytes()} vs ${simTxDataResource.writeBytes()}`,
-                            envelopeXdr: transaction.toXDR(),
-                        }
-                    }
+                    // HOTFIX(s) for KALE `plant`
+                    // if Block race condition in a non-simulated transaction throw as the transaction will likely fail
+                    // if (
+                    //     contractAddress === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA'
+                    //     && functionName === 'plant'
+                    //     && sorobanData.resources().footprint().readOnly().findIndex((key) => {
+                    //         try {
+                    //             const [ k ] = scValToNative(key.contractData().key());
+                    //             return k === 'Block';
+                    //         } catch {}
+                    //         return false;
+                    //     }) > -1
+                    // ) {
+                    //     throw `This transaction is likely to fail. Please try again in a few seconds.`
+                    // }
 
                     break;
                 default:
@@ -304,6 +335,13 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
         else {
             throw 'Invalid request'
+        }
+
+        // HOTFIX(s) for KALE
+        if (contractAddress === 'CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA') {
+            
+            // restrict KALE contract to minimum fee
+            fee = Number(BASE_FEE) * 2 + 1
         }
 
         // It should just assume the xdr fee

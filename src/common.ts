@@ -96,6 +96,9 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 2
         })
 
     if (result.status === 'SUCCESS') {
+        // @ts-ignore
+        delete result.events;
+
         const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, returnValue, ...rest } = result
 
         return {

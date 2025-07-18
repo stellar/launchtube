@@ -48,6 +48,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
         await this.ctx.storage.delete(`pool:${sequence}`)
     }
     public async returnSequence(sequence: string) {
+        // TODO we've lost a couple sequences somehow. Not many. But a couple.
         await this.ctx.storage.delete(`field:${sequence}`)
         await this.ctx.storage.put(`pool:${sequence}`, new Date())
     }
@@ -133,4 +134,4 @@ export class SequencerDurableObject extends DurableObject<Env> {
             throw err
         }
     }
-}
+}   

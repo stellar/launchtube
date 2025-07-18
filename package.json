@@ -6,14 +6,15 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env prod",
-    "deploy:all": "pnpm run deploy && pnpm run deploy:prod",
+    "deploy:futurenet": "wrangler deploy --env futurenet",
+    "deploy:all": "pnpm run deploy && pnpm run deploy:prod && pnpm run deploy:futurenet",
     "dev": "wrangler dev",
     "start": "pnpm run dev",
     "build": "node esbuild.js",
     "types": "wrangler types"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "13.3.0",
+    "@stellar/stellar-sdk": "14.0.0-rc.3",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "itty-fetcher": "^0.9.4",
     "itty-router": "^5.0.18",
