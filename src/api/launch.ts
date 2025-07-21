@@ -172,12 +172,12 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
         let invokeContract: xdr.InvokeContractArgs | undefined
         let contractAddress: string | undefined
-        let functionName: string | undefined
+        // let functionName: string | undefined
 
         try {
             invokeContract = func.invokeContract()
             contractAddress = StrKey.encodeContract(invokeContract.contractAddress().contractId() as unknown as Buffer)
-            functionName = invokeContract.functionName().toString()
+            // functionName = invokeContract.functionName().toString()
         } catch {}
 
         if (sim) {
