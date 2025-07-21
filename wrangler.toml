@@ -1,18 +1,16 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "launchtube"
 main = "dist/index.js"
-compatibility_date = "2024-05-12"
+compatibility_date = "2025-07-21"
 workers_dev = false
 minify = true
-logpush = true
+logpush = false
 send_email = [
     { name = "EMAIL" }
 ]
 
-[observability]
-enabled = true
-
 [observability.logs]
+enabled = true
 invocation_logs = false
 
 [build]
