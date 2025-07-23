@@ -28,14 +28,18 @@ export class SequencerDurableObject extends DurableObject<Env> {
         await this.ctx.storage.deleteAlarm()
     }
     public async getSequence(): Promise<string> {
+        // TODO it may be better if keys are ordered by name to include a timestamp as the first part of the key so we're actively shuffling the pool
+        
         // I need to test if it's possible to get the first item in the list more than once in times of concurrent requests
         // Did this. We're good.
-        const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 1 })
+        const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 100 })
 
         if (items.size <= 0)
             throw 'Too many transactions queued. Please try again later'
 
-        const [[key]] = items.entries()
+        const entries = [...items.entries()]
+        const randomIndex = Math.floor(Math.random() * entries.length)
+        const [key] = entries[randomIndex]
         const sequenceSecret = key.split(':')[1]
 
         await this.ctx.storage.delete(`pool:${sequenceSecret}`)
