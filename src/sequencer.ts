@@ -30,12 +30,16 @@ export class SequencerDurableObject extends DurableObject<Env> {
     public async getSequence(): Promise<string> {
         // I need to test if it's possible to get the first item in the list more than once in times of concurrent requests
         // Did this. We're good.
-        const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 1 })
+        const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 100 })
 
         if (items.size <= 0)
             throw 'Too many transactions queued. Please try again later'
 
-        const [[key]] = items.entries()
+        // Convert to array and select random entry
+        const itemsArray = Array.from(items.entries())
+        const randomIndex = Math.floor(Math.random() * itemsArray.length)
+        const [key] = itemsArray[randomIndex]
+        
         const sequenceSecret = key.split(':')[1]
 
         await this.ctx.storage.delete(`pool:${sequenceSecret}`)
