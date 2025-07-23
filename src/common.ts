@@ -1,15 +1,13 @@
 import { Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
-import { getRpc, wait } from "./helpers";
+import { wait } from "./helpers";
 import { SequencerDurableObject } from "./sequencer";
-import { Api } from "@stellar/stellar-sdk/rpc";
+import { Api, type Server } from "@stellar/stellar-sdk/rpc";
 
 export const MAX_U32 = 2 ** 32 - 1
 export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
 export const EAGER_CREDITS = 100_000
 
-export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
-    const rpc = getRpc(env)
-
+export async function simulateTransaction(rpc: Server, tx: Transaction | FeeBumpTransaction) {
     return rpc.simulateTransaction(tx)
         .then(async (res) => {
             // TODO support Restore scenarios
@@ -50,14 +48,13 @@ export async function simulateTransaction(env: Env, tx: Transaction | FeeBumpTra
         })
 }
 
-export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransaction) {
+export async function sendTransaction(rpc: Server, tx: Transaction | FeeBumpTransaction) {
     const xdr = tx.toXDR()
-    const rpc = getRpc(env)
 
     return rpc.sendTransaction(tx)
         .then(({ status, hash, errorResult, diagnosticEvents, ...rest }) => {
             if (status === 'PENDING')
-                return pollTransaction(env, hash, xdr)
+                return pollTransaction(rpc, hash, xdr)
             else {
                 throw {
                     type: 'send',
@@ -80,11 +77,10 @@ export async function sendTransaction(env: Env, tx: Transaction | FeeBumpTransac
         })
 }
 
-async function pollTransaction(env: Env, hash: string, xdr: string, interval = 2) {
+async function pollTransaction(rpc: Server, hash: string, xdr: string, interval = 2) {
     await wait(interval * 1000); // exponential backoff
     interval *= 2;
 
-    const rpc = getRpc(env)
     const result = await rpc
         .getTransaction(hash)
         .catch((err) => {
@@ -141,7 +137,7 @@ async function pollTransaction(env: Env, hash: string, xdr: string, interval = 2
         }
     }
 
-    return pollTransaction(env, hash, xdr, interval)
+    return pollTransaction(rpc, hash, xdr, interval)
 }
 
 export async function returnAllSequence(env: Env) {

@@ -87,7 +87,7 @@ export function getRandomNumber(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export async function getMockData(env: Env, formData: FormData) {
+export async function getMockData(env: Env, rpc: Server, formData: FormData) {
     const type = formData.get('mock')
     const isSim = formData.get('sim') !== 'false'
 
@@ -106,7 +106,7 @@ export async function getMockData(env: Env, formData: FormData) {
     } else {
         nullKeypair = Keypair.fromRawEd25519Seed(Buffer.alloc(32))
         nullPubkey = nullKeypair.publicKey() // GA5WUJ54Z23KILLCUOUNAKTPBVZWKMQVO4O6EQ5GHLAERIMLLHNCSKYH
-        nullSource = await getRpc(env).getAccount(nullPubkey)
+        nullSource = await rpc.getAccount(nullPubkey)
     }
 
     let transaction = new TransactionBuilder(nullSource, {
@@ -127,7 +127,7 @@ export async function getMockData(env: Env, formData: FormData) {
         .setTimeout(30)
         .build()
 
-    const { result, latestLedger } = await simulateTransaction(env, transaction)
+    const { result, latestLedger } = await simulateTransaction(rpc, transaction)
     const op = transaction.operations[0] as Operation.InvokeHostFunction
 
     for (const auth of result?.auth || []) {
@@ -136,7 +136,7 @@ export async function getMockData(env: Env, formData: FormData) {
         )
     }
 
-    const { transactionData } = await simulateTransaction(env, transaction)
+    const { transactionData } = await simulateTransaction(rpc, transaction)
 
     transaction = TransactionBuilder.cloneFrom(transaction, {
         fee: transactionData.build().resourceFee().toString(),

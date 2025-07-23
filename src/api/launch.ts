@@ -78,6 +78,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         const debug = formData.get('debug')
         const mock = formData.get('mock') as string | null
         const isMock = env.ENV === 'development' && mock && ['xdr', 'op'].includes(mock)
+        const rpc = getRpc(env)
 
         let {
             xdr: x,
@@ -86,7 +87,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             // fee,
             sim,
         } = Object.assign(
-            isMock ? await getMockData(env, formData) : {},
+            isMock ? await getMockData(env, rpc, formData) : {},
             schema.parse(Object.fromEntries(formData))
         )
 
@@ -178,7 +179,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let transaction: Transaction
 
         if (sim) {
-            const rpc = getRpc(env)
+            
             const sequenceSource = await rpc
                 .getAccount(sequencePubkey)
                 .catch((err) => {
@@ -213,7 +214,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
                 }))
                 .build()
 
-            const { result, transactionData } = await simulateTransaction(env, transaction)
+            const { result, transactionData } = await simulateTransaction(rpc, transaction)
 
             /*
                 - Check that we have the right auth
@@ -308,8 +309,6 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
         // It should just assume the xdr fee
         // if (!fee) {
-            // const rpc = getRpc(env)
-
             // try {
             //     const { sorobanInclusionFee } = await rpc.getFeeStats()
 
@@ -373,7 +372,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
 
         // Send the transaction
         try {
-            res = await sendTransaction(env, feeBumpTransaction)
+            res = await sendTransaction(rpc, feeBumpTransaction)
         } catch (err: any) {
             if (err?.feeCharged)
                 credits = await creditsStub.spendBefore(err.feeCharged, bidCredits)

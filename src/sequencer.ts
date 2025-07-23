@@ -65,9 +65,10 @@ export class SequencerDurableObject extends DurableObject<Env> {
                 sequenceSecret = await this.getSequence()
             } catch {}
             
+            const rpc = getRpc(this.env);
             const sequenceKeypair = Keypair.fromSecret(sequenceSecret)
             const sequencePubkey = sequenceKeypair.publicKey()
-            const sequenceSource = await getRpc(this.env).getAccount(sequencePubkey)
+            const sequenceSource = await rpc.getAccount(sequencePubkey)
 
             let transaction: TransactionBuilder | Transaction = new TransactionBuilder(sequenceSource, {
                 fee: (100_000).toString(),
@@ -120,7 +121,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
         
             feeBumpTransaction.sign(fundKeypair)
 
-            const send_res = await sendTransaction(this.env, feeBumpTransaction)
+            const send_res = await sendTransaction(rpc, feeBumpTransaction)
 
             // If we fail here we'll lose the sequence keypairs. Keypairs should be derived so they can always be recreated
             for (const sequenceSecret of queue) {
