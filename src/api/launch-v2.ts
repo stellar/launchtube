@@ -117,8 +117,9 @@ export async function apiLaunchV2(request: Request, env: Env, _ctx: ExecutionCon
         let resourceFee: bigint
         let transaction: Transaction
 
+        const rpc = getRpc(env)
+
         if (sim) {
-            const rpc = getRpc(env)
             const sequenceSource = await rpc
                 .getAccount(sequencePubkey)
                 .catch((err) => {
@@ -153,7 +154,7 @@ export async function apiLaunchV2(request: Request, env: Env, _ctx: ExecutionCon
                 }))
                 .build()
 
-            const { result, transactionData } = await simulateTransaction(env, transaction)
+            const { result, transactionData } = await simulateTransaction(rpc, transaction)
 
             /*
                 - Check that we have the right auth
@@ -244,7 +245,7 @@ export async function apiLaunchV2(request: Request, env: Env, _ctx: ExecutionCon
 
         // Send the transaction
         try {
-            res = await sendTransaction(env, feeBumpTransaction)
+            res = await sendTransaction(rpc, feeBumpTransaction)
         } catch (err: any) {
             if (err.feeCharged)
                 credits = await creditsStub.spendBefore(err.feeCharged, bidCredits)
