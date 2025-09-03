@@ -92,6 +92,8 @@ async function pollTransaction(rpc: Server, hash: string, xdr: string, interval 
         })
 
     if (result.status === 'SUCCESS') {
+        delete (result as { events?: any }).events;
+
         const { status, envelopeXdr, resultXdr, resultMetaXdr, diagnosticEventsXdr, returnValue, ...rest } = result
 
         return {

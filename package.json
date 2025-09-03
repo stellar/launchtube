@@ -6,7 +6,8 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env prod",
-    "deploy:all": "pnpm run deploy && pnpm run deploy:prod",
+    "deploy:futurenet": "wrangler deploy --env futurenet",
+    "deploy:all": "pnpm run deploy && pnpm run deploy:prod && pnpm run deploy:futurenet",
     "dev": "wrangler dev",
     "start": "pnpm run dev",
     "build": "node esbuild.js",

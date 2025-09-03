@@ -1,7 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "launchtube"
 main = "dist/index.js"
-compatibility_date = "2024-07-18"
+compatibility_date = "2025-10-03"
 workers_dev = false
 minify = true
 logpush = false
@@ -10,8 +10,8 @@ send_email = [
 ]
 
 [observability.logs]
-invocation_logs = false
 enabled = true
+invocation_logs = false
 
 [build]
 command = "npm run build"
@@ -49,11 +49,6 @@ id = "1fcab4e76e4948ba9b728271fa51586d"
 binding = "CODES"
 id = "1717f596858e4685b9b77b0ac047c2b5"
 
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "launchtube-testnet"
-# database_id = "80e789b8-41a6-4741-aeca-62b4203661dc"
-
 [define]
 global = "globalThis"
 
@@ -90,11 +85,6 @@ id = "4d86c63ffe344460ab9f740c48e01cab"
 binding = "CODES"
 id = "522dc827cd9f43e58a2810d974fb80c3"
 
-# [[env.prod.d1_databases]]
-# binding = "DB"
-# database_name = "launchtube-public"
-# database_id = "22bd71e0-81f5-4d93-80a9-1242869cbbe5"
-
 [env.prod.define]
 global = "globalThis"
 
@@ -102,3 +92,39 @@ global = "globalThis"
 ENV = "production"
 NETWORK_PASSPHRASE = "Public Global Stellar Network ; September 2015"
 NATIVE_CONTRACT_ID = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+
+### FUTURENET ###
+
+[env.futurenet]
+workers_dev = false
+send_email = [
+    { name = "EMAIL" }
+]
+
+[[env.futurenet.durable_objects.bindings]]
+name = "CREDITS_DURABLE_OBJECT"
+class_name = "CreditsDurableObject"
+
+[[env.futurenet.durable_objects.bindings]]
+name = "SEQUENCER_DURABLE_OBJECT"
+class_name = "SequencerDurableObject"
+
+[[env.futurenet.durable_objects.bindings]]
+name = "MONITOR_DURABLE_OBJECT"
+class_name = "MonitorDurableObject"
+
+[[env.futurenet.kv_namespaces]]
+binding = "SUDOS"
+id = "3c556bb051754cea8d3a68037bc6e0b5"
+
+[[env.futurenet.kv_namespaces]]
+binding = "CODES"
+id = "f91408337b7c4adca251f8a371f0ac72"
+
+[env.futurenet.define]
+global = "globalThis"
+
+[env.futurenet.vars]
+ENV = "development"
+NETWORK_PASSPHRASE = "Test SDF Future Network ; October 2022"
+NATIVE_CONTRACT_ID = "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT"

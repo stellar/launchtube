@@ -28,6 +28,8 @@ export class SequencerDurableObject extends DurableObject<Env> {
         await this.ctx.storage.deleteAlarm()
     }
     public async getSequence(): Promise<string> {
+        // TODO it may be better if keys are ordered by name to include a timestamp as the first part of the key so we're actively shuffling the pool
+        
         // I need to test if it's possible to get the first item in the list more than once in times of concurrent requests
         // Did this. We're good.
         const items = await this.ctx.storage.list<Date>({ prefix: 'pool:', limit: 100 })
@@ -52,6 +54,7 @@ export class SequencerDurableObject extends DurableObject<Env> {
         await this.ctx.storage.delete(`pool:${sequence}`)
     }
     public async returnSequence(sequence: string) {
+        // TODO we've lost a couple sequences somehow. Not many. But a couple.
         await this.ctx.storage.delete(`field:${sequence}`)
         await this.ctx.storage.put(`pool:${sequence}`, new Date())
     }
@@ -138,4 +141,4 @@ export class SequencerDurableObject extends DurableObject<Env> {
             throw err
         }
     }
-}
+}   

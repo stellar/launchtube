@@ -19,6 +19,7 @@ import { ZodError } from "zod";
 import { returnAllSequence, SEQUENCER_ID_NAME } from "./common";
 import { StrKey, xdr } from "@stellar/stellar-sdk/minimal";
 import { apiTokenGet } from "./api/token-get";
+import { apiLaunchV2 } from "./api/launch-v2";
 
 const { preflight, corsify } = cors()
 const router = IttyRouter()
@@ -48,6 +49,7 @@ router
 		}
 	}))
 	.post('/', apiLaunch)
+	.post('/v2', apiLaunchV2)
 	.get('/terms-and-conditions', htmlTermsAndConditions)
 	.get('/activate', htmlActivate)
 	.post('/activate', apiTokenActivate)
