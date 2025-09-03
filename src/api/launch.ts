@@ -23,10 +23,10 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         const formData = await request.formData() as FormData
         const schema = object({
             mock: zenum(['xdr', 'op']).optional(),
-            sim: preprocess(
-                (val) => val ? val === 'true' : true,
-                boolean().optional()
-            ),
+            // sim: preprocess(
+            //     (val) => val ? val === 'true' : true,
+            //     boolean().optional()
+            // ),
             xdr: string().optional(),
             func: string().optional(),
             auth: preprocess(
@@ -35,12 +35,13 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             ),
         }).superRefine((input, ctx) => {
             if (input.mock) {
-                if (input.sim === false && input.mock !== 'xdr')
-                    ctx.addIssue({
-                        code: ZodIssueCode.custom,
-                        message: 'Cannot pass `sim = false` without `mock = xdr`'
-                    })
-                else if (input.xdr || input.func || input.auth)
+                // if (input.sim === false && input.mock !== 'xdr')
+                //     ctx.addIssue({
+                //         code: ZodIssueCode.custom,
+                //         message: 'Cannot pass `sim = false` without `mock = xdr`'
+                //     })
+                // else 
+                if (input.xdr || input.func || input.auth)
                     ctx.addIssue({
                         code: ZodIssueCode.custom,
                         message: 'Cannot pass `mock` with `xdr`, `func`, or `auth`'
@@ -48,12 +49,13 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             }
 
             else {
-                if (input.sim === false && !input.xdr)
-                    ctx.addIssue({
-                        code: ZodIssueCode.custom,
-                        message: 'Cannot pass `sim = false` without `xdr`'
-                    })
-                else if (!input.xdr && !input.func && !input.auth)
+                // if (input.sim === false && !input.xdr)
+                //     ctx.addIssue({
+                //         code: ZodIssueCode.custom,
+                //         message: 'Cannot pass `sim = false` without `xdr`'
+                //     })
+                // else 
+                if (!input.xdr && !input.func && !input.auth)
                     ctx.addIssue({
                         code: ZodIssueCode.custom,
                         message: 'Must pass either `xdr` or `func` and `auth`'
@@ -80,7 +82,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
             xdr: x,
             func: f,
             auth: a,
-            sim,
+            // sim,
         } = Object.assign(
             isMock ? await getMockData(env, rpc, formData) : {},
             schema.parse(Object.fromEntries(formData))
@@ -105,6 +107,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
         let func: xdr.HostFunction
         let auth: xdr.SorobanAuthorizationEntry[] | undefined
         let fee = Number(BASE_FEE) * 2 + 2
+        let sim = true
 
         // Passing `xdr`
         if (x) {
