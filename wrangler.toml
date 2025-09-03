@@ -1,7 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "launchtube"
 main = "dist/index.js"
-compatibility_date = "2025-10-03"
+compatibility_date = "2025-09-03"
 workers_dev = false
 minify = true
 logpush = false
