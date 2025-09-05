@@ -204,7 +204,7 @@ export async function apiLaunch(request: Request, env: Env, _ctx: ExecutionConte
                 networkPassphrase: env.NETWORK_PASSPHRASE,
                 ledgerbounds: tx?.ledgerBounds,
                 timebounds: tx?.timeBounds || {
-                    minTime: now,
+                    minTime: 0,
                     maxTime: now + 30 // +{x} seconds (also change the poll interval)
                 },
                 memo: tx?.memo,

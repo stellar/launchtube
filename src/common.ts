@@ -1,7 +1,7 @@
 import { Transaction, FeeBumpTransaction } from "@stellar/stellar-sdk/minimal";
 import { wait } from "./helpers";
 import { SequencerDurableObject } from "./sequencer";
-import { Api, type Server } from "@stellar/stellar-sdk/rpc";
+import { Api, type Server } from "@stellar/stellar-sdk/minimal/rpc";
 
 export const MAX_U32 = 2 ** 32 - 1
 export const SEQUENCER_ID_NAME = 'Test Launchtube ; June 2024'
