@@ -1,13 +1,63 @@
 # Launchtube
 
+> [!CAUTION]
+> ## This project is now legacy
+>
+> **Launchtube has been superseded by the [OpenZeppelin Relayer](https://github.com/OpenZeppelin/openzeppelin-relayer) with the [Channels Plugin](https://github.com/OpenZeppelin/relayer-plugin-channels).**
+>
+> The OpenZeppelin Stellar Channels Service provides a production-ready, enterprise-grade solution for submitting Stellar Soroban transactions with:
+> - **Zero infrastructure** - No server or relayer configuration required
+> - **Automatic fee handling** - The service covers gas fees on your behalf
+> - **High throughput** - Parallel processing via managed channel account pools
+> - **Type-safe SDK** - Full TypeScript support with minimal setup
+>
+> ### Migration Resources
+>
+> | Resource | Description |
+> |----------|-------------|
+> | [**Stellar Channels Guide**](https://docs.openzeppelin.com/relayer/1.3.x/guides/stellar-channels-guide) | Complete guide for getting started (start here!) |
+> | [Channels Plugin Documentation](https://docs.openzeppelin.com/relayer/1.3.x/plugins/channels) | Plugin configuration and API reference |
+> | [relayer-plugin-channels](https://github.com/OpenZeppelin/relayer-plugin-channels) | TypeScript client and plugin source |
+> | [openzeppelin-relayer](https://github.com/OpenZeppelin/openzeppelin-relayer) | Core relayer service |
+>
+> ### Quick Start with OpenZeppelin Channels
+>
+> ```bash
+> npm install @openzeppelin/relayer-plugin-channels
+> ```
+>
+> ```typescript
+> import { ChannelsClient } from '@openzeppelin/relayer-plugin-channels';
+>
+> const client = new ChannelsClient({
+>   baseUrl: 'https://channels.openzeppelin.com/testnet',
+>   apiKey: process.env.CHANNELS_API_KEY, // Get from https://channels.openzeppelin.com/testnet/gen
+> });
+>
+> // Submit Soroban function with auth entries
+> const result = await client.submitSorobanTransaction({
+>   func: hostFunctionXdr,  // base64-encoded
+>   auth: authEntryXdrs,    // array of base64-encoded auth entries
+> });
+>
+> console.log(result.hash); // Transaction hash
+> ```
+>
+> ---
+>
+> **The documentation below is preserved for reference but this service should not be used for new projects.**
+
+---
+
 ![DALL·E 2024-10-07 20 36 03](https://github.com/user-attachments/assets/05d2289d-f0e4-4eb7-9701-59a7b0d3b353)
 
+## Legacy Documentation
 
 Getting Stellar transactions successfully submitted to the network can be a chore. You've got a lot to think about between XLM fees, sequence numbers, block times, retries, rate limits, ledger limits, and more. This gets even trickier when trying to submit smart contract invocations. Soroban contracts can't pay Stellar transaction fees and they maintain nonces not sequence numbers.
 
 The Launchtube service aims to alleviate all of these challenges and complexities by giving you an API which accepts Soroban ops and then handles getting those entries successfully submitted to the network. No XLM or G-addresses required! Just simulate and sign your Soroban ops, submit them to Launchtube, and we'll handle getting them onchain. Too easy!
 
-> [!CAUTION]  
+> [!CAUTION]
 > Launchtube is an experimental service and while SDF maintains a mainnet implementation we make no guarantees about its stability, availablility or longevity. Do not use SDF's Launchtube service for mission-critical production services.
 
 
